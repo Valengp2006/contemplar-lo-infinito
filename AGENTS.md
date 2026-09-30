@@ -1,13 +1,15 @@
 # AGENT.md — Contemplar lo infinito
 
 ## Estado del proyecto
-- Fase actual: 0 — plantilla clonada y publicada en GitHub Pages
-- Base: plantilla del curso (Vite + Three.js, WebGPU, simulación en GPU)
-- Funciona: plantilla original sin modificar
-- Pendiente: entender la estructura real y adaptarla (Fase 1)
+- Fase actual: Prototipo 1 — agentes + flocking + flow field (CPU)
+- Base: Vite + Three.js (WebGLRenderer), simulación en CPU
+- Funciona: 800 agentes con flocking (separation, alignment, cohesion) + flow field (simplex noise)
+- Pendiente: Physarum, controles expresivos, interfaz de performance
 
 ## Registro de cambios
 - 2026-09-30: repo creado desde la plantilla y desplegado en Pages
+- 2026-09-30: Fase 1 — fuerzas extraídas a forces.js como steering behaviors; añadidos wander y arrive; sección 23 actualizada con estructura real
+- 2026-09-30: Prototipo 1 — arquitectura migrada de GPU compute a CPU; simulación reescrita con Agent, Flock, FlowField; render con THREE.Points; panel LAB adaptado
 
 ## 1. Información general
 
@@ -877,41 +879,52 @@ La complejidad debe construirse delante del espectador.
 
 ---
 
-# 23. Arquitectura técnica inicial para Three.js
+# 23. Arquitectura técnica para Three.js
 
-La implementación puede dividirse conceptualmente en:
+## Estructura real actual
+
+El prototipo ejecuta la simulación en CPU (JavaScript). El rendering usa THREE.Points sobre WebGLRenderer. Los parámetros están centralizados en `config.js` y son modificables en tiempo real desde el panel LAB.
+
+```text
+src/
+├── main.js                           ← entrada, escena, cámara, renderer, loop, modos LAB/PERFORMANCE
+├── styles.css                        ← estilos del panel LAB y HUD
+├── simulation/
+│   ├── config.js                     ← parámetros centralizados (pesos, límites, render)
+│   ├── noise.js                      ← simplex noise 2D para el flow field
+│   ├── FlowField.js                  ← campo vectorial basado en ruido (consulta por posición)
+│   ├── Agent.js                      ← agente autónomo (posición, velocidad, steering)
+│   └── Flock.js                      ← gestor de agentes + flocking + render (THREE.Points)
+└── ui/
+    └── labPanel.js                   ← panel de desarrollo (sliders para pesos y parámetros)
+```
+
+## Estructura prevista para fases posteriores
 
 ```text
 src/
 ├── main.js
-├── scene/
-│   ├── SceneManager.js
-│   ├── Camera.js
-│   └── Renderer.js
-├── agents/
+├── styles.css
+├── simulation/
+│   ├── config.js
+│   ├── noise.js
+│   ├── FlowField.js
 │   ├── Agent.js
-│   ├── AgentSystem.js
-│   ├── Steering.js
-│   ├── Flocking.js
-│   └── Perception.js
-├── flow/
-│   └── FlowField.js
+│   └── Flock.js
 ├── physarum/
-│   ├── Physarum.js
-│   └── TrailMap.js
+│   ├── trailMap.js                   ← textura de depósito, difusión, decaimiento
+│   └── physarumRenderer.js           ← render de la capa de memoria visual
 ├── interaction/
-│   ├── Controls.js
-│   ├── Pulse.js
-│   └── Attraction.js
-├── visual/
-│   ├── ParticleRenderer.js
-│   ├── TrailRenderer.js
-│   └── VisualState.js
+│   ├── pulse.js                      ← perturbación temporal (botón PULSO)
+│   └── attraction.js                 ← punto de atracción expresivo (ATRACCIÓN)
+├── ui/
+│   ├── labPanel.js                   ← panel de desarrollo
+│   └── performanceUI.js              ← interfaz mínima de interpretación
 └── score/
-    └── PerformanceState.js
+    └── performanceState.js           ← estado global (REVELACIÓN, progresión)
 ```
 
-Esta estructura es una propuesta inicial y puede cambiar durante el desarrollo.
+Esta estructura evolucionará fase a fase. Cada archivo nuevo se documenta en el registro de cambios.
 
 ---
 
