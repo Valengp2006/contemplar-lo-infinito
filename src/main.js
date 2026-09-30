@@ -14,9 +14,7 @@ async function main() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#050607');
 
-  const camera = new THREE.PerspectiveCamera(
-    50, innerWidth / innerHeight, 0.05, 200
-  );
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 200);
   camera.position.set(0, 0, 30);
   camera.lookAt(0, 0, 0);
 
@@ -32,6 +30,39 @@ async function main() {
   // ---- Simulation -------------------------------------------------------
   const flowField = new FlowField();
   const flock = new Flock(scene);
+
+  // ---- Mouse Interaction ------------------------------------------------
+  const raycaster = new THREE.Raycaster();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const hit = new THREE.Vector3();
+  let isPointerDown = false;
+
+  const updatePointer = (event) => {
+    const pointerNdc = new THREE.Vector2(
+      (event.clientX / innerWidth) * 2 - 1,
+      -(event.clientY / innerHeight) * 2 + 1
+    );
+    raycaster.setFromCamera(pointerNdc, camera);
+    if (raycaster.ray.intersectPlane(plane, hit)) {
+      flowField.setInfluence(hit.x, hit.y, true);
+    }
+  };
+
+  addEventListener('pointerdown', (e) => {
+    // Si hace clic sobre el panel LAB, ignoramos para que interactúe la UI
+    if (e.target.closest('.panel')) return;
+    isPointerDown = true;
+    updatePointer(e);
+  });
+  
+  addEventListener('pointerup', () => {
+    isPointerDown = false;
+    flowField.setInfluence(0, 0, false);
+  });
+  
+  addEventListener('pointermove', (e) => {
+    if (isPointerDown) updatePointer(e);
+  });
 
   // ---- UI ---------------------------------------------------------------
   let paused = false;
@@ -54,7 +85,7 @@ async function main() {
     panel.setVisible(lab);
     orbit.enabled = lab;
     hud.innerHTML = lab
-      ? '<strong>LAB</strong> · P: performance · R: reset'
+      ? '<strong>LAB</strong> · P: performance · R: reset · D: debug mode'
       : '';
   };
   setMode('LAB');
@@ -64,6 +95,7 @@ async function main() {
     if (event.repeat) return;
     if (event.code === 'KeyP') setMode(mode === 'LAB' ? 'PERFORMANCE' : 'LAB');
     if (event.code === 'KeyR') flock.reset();
+    if (event.code === 'KeyD') flock.toggleDebug();
   });
 
   // ---- Resize -----------------------------------------------------------
@@ -77,10 +109,13 @@ async function main() {
   const clock = new THREE.Clock();
 
   renderer.setAnimationLoop(() => {
+    const dt = clock.getDelta();
     const elapsed = clock.getElapsedTime();
 
     if (!paused) {
-      flock.update(flowField, elapsed);
+      // Limitar dt para que si cambias de pestaña, la simulación no salte muy lejos
+      const safeDt = Math.min(dt, 0.1); 
+      flock.update(safeDt, flowField, elapsed);
     }
 
     orbit.update();
@@ -91,8 +126,7 @@ async function main() {
 main().catch((error) => {
   console.error(error);
   const pre = document.createElement('pre');
-  pre.style.cssText =
-    'position:fixed;inset:16px;white-space:pre-wrap;color:#fff;z-index:50';
+  pre.style.cssText = 'position:fixed;inset:16px;white-space:pre-wrap;color:#fff;z-index:50';
   pre.textContent = String(error?.stack || error);
   document.body.append(pre);
 });

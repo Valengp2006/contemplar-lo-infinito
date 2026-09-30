@@ -1,94 +1,203 @@
+import * as THREE from 'three';
 import { CONFIG } from './config.js';
 
 /**
- * Agent — an autonomous entity with position, velocity and acceleration.
- *
- * Forces are accumulated each frame via applyForce(), then integrated
- * in update(). Acceleration resets to zero after each update (forces
- * must be re-applied every frame).
+ * Agent — entidad autónoma.
+ * Su comportamiento surge de: Percepción -> Cálculo de fuerzas -> Steering -> Aceleración
  */
 export class Agent {
-  /**
-   * @param {number} x - initial X position
-   * @param {number} y - initial Y position
-   */
   constructor(x, y) {
-    // Position
-    this.px = x;
-    this.py = y;
+    this.position = new THREE.Vector3(x, y, 0);
+    
+    this.velocity = new THREE.Vector3(
+      Math.random() - 0.5,
+      Math.random() - 0.5,
+      0
+    );
+    this.velocity.setLength(Math.random() * 0.2 + 0.1);
+    
+    this.acceleration = new THREE.Vector3();
 
-    // Velocity — start with small random direction
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 0.5;
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
-
-    // Acceleration — reset each frame
-    this.ax = 0;
-    this.ay = 0;
+    // Datos para el debug mode
+    this.debugData = {
+      neighbors: [],
+      flowForce: new THREE.Vector3(),
+      steeringForce: new THREE.Vector3()
+    };
   }
 
-  /**
-   * Accumulate a force onto the acceleration.
-   * @param {number} fx
-   * @param {number} fy
-   */
-  applyForce(fx, fy) {
-    this.ax += fx;
-    this.ay += fy;
+  // --- PERCEPCIÓN ---
+  
+  getNeighbors(agents) {
+    const neighbors = [];
+    const radiusSq = CONFIG.perceptionRadius * CONFIG.perceptionRadius;
+    
+    for (const other of agents) {
+      if (other === this) continue;
+      
+      const distanceSq = this.position.distanceToSquared(other.position);
+      
+      if (distanceSq < radiusSq) {
+        neighbors.push({ agent: other, distanceSq });
+      }
+    }
+    
+    return neighbors;
   }
 
-  /**
-   * Integrate: velocity += acceleration, position += velocity.
-   * Clamps velocity to maxSpeed and resets acceleration.
-   */
-  update() {
-    const maxSpeed = CONFIG.maxSpeed;
+  // --- STEERING BÁSICO ---
 
-    // Velocity update
-    this.vx += this.ax;
-    this.vy += this.ay;
-
-    // Clamp speed
-    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    if (speed > maxSpeed) {
-      this.vx = (this.vx / speed) * maxSpeed;
-      this.vy = (this.vy / speed) * maxSpeed;
-    }
-
-    // Position update
-    this.px += this.vx;
-    this.py += this.vy;
-
-    // Reset acceleration
-    this.ax = 0;
-    this.ay = 0;
+  steerTowards(desired) {
+    const steering = desired.clone().sub(this.velocity);
+    steering.clampLength(0, CONFIG.maxForce);
+    return steering;
   }
 
-  /**
-   * Soft boundary steering — applies a gentle force pushing the agent
-   * back when it approaches the edge of the world.
-   *
-   * @param {number} bounds - half-extent of the world
-   */
-  edges(bounds) {
-    const margin = bounds * 0.15;  // zone where steering kicks in
-    const strength = CONFIG.maxForce * 2;
-    let steerX = 0;
-    let steerY = 0;
+  seek(target) {
+    const desired = target.clone().sub(this.position);
+    if (desired.lengthSq() === 0) {
+      return new THREE.Vector3();
+    }
+    desired.normalize();
+    desired.multiplyScalar(CONFIG.maxSpeed);
+    return this.steerTowards(desired);
+  }
 
-    if (this.px > bounds - margin) {
-      steerX = -strength * ((this.px - (bounds - margin)) / margin);
-    } else if (this.px < -bounds + margin) {
-      steerX = strength * ((-bounds + margin - this.px) / margin);
+  // --- REGLAS DE FLOCKING ---
+
+  separation(neighbors) {
+    const force = new THREE.Vector3();
+    let count = 0;
+    const sepRadiusSq = CONFIG.separationRadius * CONFIG.separationRadius;
+
+    for (const { agent: other, distanceSq } of neighbors) {
+      if (distanceSq > 0 && distanceSq < sepRadiusSq) {
+        const distance = Math.sqrt(distanceSq);
+        const difference = this.position.clone().sub(other.position);
+        
+        // Ponderar por distancia (más cerca = más fuerza de separación)
+        difference.normalize();
+        difference.divideScalar(distance);
+        
+        force.add(difference);
+        count++;
+      }
     }
 
-    if (this.py > bounds - margin) {
-      steerY = -strength * ((this.py - (bounds - margin)) / margin);
-    } else if (this.py < -bounds + margin) {
-      steerY = strength * ((-bounds + margin - this.py) / margin);
+    if (count > 0) {
+      force.divideScalar(count);
+      if (force.lengthSq() > 0) {
+        force.normalize().multiplyScalar(CONFIG.maxSpeed);
+        return this.steerTowards(force);
+      }
     }
 
-    this.applyForce(steerX, steerY);
+    return force;
+  }
+
+  alignment(neighbors) {
+    const desired = new THREE.Vector3();
+    let count = 0;
+
+    for (const { agent: other } of neighbors) {
+      desired.add(other.velocity);
+      count++;
+    }
+
+    if (count === 0) {
+      return new THREE.Vector3();
+    }
+
+    desired.divideScalar(count);
+    desired.normalize().multiplyScalar(CONFIG.maxSpeed);
+    
+    return this.steerTowards(desired);
+  }
+
+  cohesion(neighbors) {
+    const center = new THREE.Vector3();
+    let count = 0;
+
+    for (const { agent: other } of neighbors) {
+      center.add(other.position);
+      count++;
+    }
+
+    if (count === 0) {
+      return new THREE.Vector3();
+    }
+
+    center.divideScalar(count);
+    return this.seek(center);
+  }
+
+  // --- FLOW FIELD ---
+
+  followFlow(flowField, time) {
+    const flowDirection = flowField.getDirection(this.position, time);
+    const desiredVelocity = flowDirection.clone().multiplyScalar(CONFIG.maxSpeed);
+    return this.steerTowards(desiredVelocity);
+  }
+
+  // --- BORDES (RETORNO SUAVE) ---
+
+  boundaryForce() {
+    const force = new THREE.Vector3();
+    const margin = CONFIG.bounds;
+
+    if (this.position.x < -margin) force.x += 1;
+    if (this.position.x > margin) force.x -= 1;
+    if (this.position.y < -margin) force.y += 1;
+    if (this.position.y > margin) force.y -= 1;
+
+    if (force.lengthSq() > 0) {
+      force.normalize().multiplyScalar(CONFIG.maxSpeed);
+      return this.steerTowards(force);
+    }
+
+    return force;
+  }
+
+  // --- COMBINACIÓN DE FUERZAS ---
+
+  applyForce(force, weight = 1.0) {
+    this.acceleration.add(force.clone().multiplyScalar(weight));
+  }
+
+  // --- ACTUALIZACIÓN PRINCIPAL ---
+
+  update(dt, agents, flowField, time) {
+    this.acceleration.set(0, 0, 0);
+
+    // 1. Percepción
+    const neighbors = this.getNeighbors(agents);
+
+    // 2. Cálculo de fuerzas individuales
+    const separation = this.separation(neighbors);
+    const alignment = this.alignment(neighbors);
+    const cohesion = this.cohesion(neighbors);
+    const flow = this.followFlow(flowField, time);
+    const boundary = this.boundaryForce();
+
+    // Guardar información para Debug Mode
+    this.debugData.neighbors = neighbors.map(n => n.agent);
+    this.debugData.flowForce.copy(flow).multiplyScalar(CONFIG.flowWeight);
+
+    // 3. Aplicar fuerzas ponderadas
+    this.applyForce(separation, CONFIG.separationWeight);
+    this.applyForce(alignment, CONFIG.alignmentWeight);
+    this.applyForce(cohesion, CONFIG.cohesionWeight);
+    this.applyForce(flow, CONFIG.flowWeight);
+    this.applyForce(boundary, 1.5); // Bordes con peso fijo fuerte
+
+    this.debugData.steeringForce.copy(this.acceleration);
+
+    // Estandarizar delta time respecto a 60fps para mantener los valores de la configuración estables
+    const timeScale = dt * 60.0; 
+
+    // 4. Integración cinemática
+    this.velocity.add(this.acceleration.clone().multiplyScalar(timeScale));
+    this.velocity.clampLength(0, CONFIG.maxSpeed);
+    this.position.add(this.velocity.clone().multiplyScalar(timeScale));
   }
 }

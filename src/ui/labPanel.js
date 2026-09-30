@@ -86,7 +86,7 @@ export function createLabPanel({ config, onReset, onModeChange, onPauseChange })
   render.innerHTML = '<h2>Render</h2>';
   panel.append(render);
 
-  refreshers.push(rangeRow(render, 'Particle size', config, 'particleSize', 0.5, 10, 0.1));
+  refreshers.push(rangeRow(render, 'Particle size', config, 'particleSize', 0.01, 1, 0.01));
   refreshers.push(rangeRow(render, 'Opacity', config, 'particleOpacity', 0.1, 1, 0.05));
 
   // -- Actions --
