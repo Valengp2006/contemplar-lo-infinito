@@ -18,6 +18,12 @@
 - Restricciones permanentes: usar solo Steering, Flocking, Flow Field y
   Physarum; prohibido analizar el audio (BPM, amplitud, espectro, FFT);
   el usuario nunca controla agentes individuales.
+- Control de versiones: al terminar cada avance o cambio importante,
+  una vez que `npm run build` pase sin errores y AGENTS.md esté
+  actualizado, hacer `git add`, `git commit` con un mensaje claro en
+  español y `git push` a la rama main. Nunca usar `--force`, nunca
+  reescribir el historial, y si el push falla, informar a la autora en
+  vez de intentar soluciones alternativas.
 
 ---
 
