@@ -684,31 +684,46 @@ Posible enfoque:
 
 ---
 
-# 17. Paleta visual provisional
+# 17. Paleta visual
 
-La paleta todavía no está cerrada.
+## Decisión
+El violeta y el magenta están presentes desde las primeras secciones.
+La paleta no cambia de colores a lo largo de la pieza: cambia la
+CANTIDAD de color y su INTENSIDAD, siguiendo el arco emocional.
 
-Dirección:
+## Colores base
+- Fondo: negro espacial, con azul casi negro (sin gris).
+- Partículas base: azul frío y blanco cálido.
+- Color expresivo: violeta y magenta.
+- Acento puntual: dorado muy sutil, solo en los momentos de mayor carga.
 
-### Fondo
-- negro espacial;
-- azul extremadamente oscuro;
-- tonos casi negros.
+## Principio
+La luz es escasa. El color aparece en pocas partículas y zonas, nunca
+cubriendo toda la pantalla. La saturación y el brillo se reservan para
+los momentos emotivos.
 
-### Partículas
-- blanco cálido;
-- azul frío;
-- posibles acentos dorados muy sutiles.
+## Evolución del color por sección
+| Sección | Color dominante | Presencia del violeta / magenta |
+|---|---|---|
+| Inicio (calma) | Un punto blanco cálido y azul tenue | Apenas un matiz violeta en el borde de la luz |
+| Curiosidad | Azul frío y blanco | Algunas partículas violetas dispersas |
+| Asombro / emergencia | Azul con vetas | Violeta en las corrientes del flow field |
+| Nostalgia | Azul profundo en las huellas Physarum | Violeta en las zonas de huella persistente |
+| Emoción | Azul + violeta | Magenta en las concentraciones más densas |
+| Pulso | Blanco cálido en la onda | Magenta en el borde de la perturbación |
+| Clímax | Todos los colores, máxima intensidad | Violeta y magenta amplios, acentos dorados |
+| Descenso | Se retira el magenta, luego el violeta | Quedan azul y blanco |
+| Final | Un punto blanco cálido y azul tenue | Vuelve el matiz casi imperceptible del inicio |
 
-### Principio
+## Cómo se decide el color (sin dibujarlo a mano)
+El color de una partícula depende de su comportamiento, no de una
+asignación manual. Por ejemplo: velocidad, densidad de vecinos
+(flocking) o intensidad de la huella (Physarum). Así el color también es
+emergente y se puede explicar.
 
-La luz debe ser escasa.
-
-El sistema no debe estar permanentemente saturado de colores.
-
-La intensidad visual debe reservarse para los momentos de mayor carga emocional.
-
----
+## Regla de contención
+Nunca más del ~15 % de la pantalla con color saturado,
+salvo en el clímax.
 
 # 18. Composición
 
