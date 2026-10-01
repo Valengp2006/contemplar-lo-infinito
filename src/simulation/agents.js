@@ -132,8 +132,8 @@ export const updateAgentsCompute = Fn(() => {
   const gridX = uGridCellsX.toInt();
   const gridY = uGridCellsY.toInt();
 
-  Loop({ start: -1, end: 2 }, ({ i }) => {
-    Loop({ start: -1, end: 2 }, ({ j }) => {
+  Loop({ start: int(-1), end: int(2), type: 'int', name: 'i' }, ({ i }) => {
+    Loop({ start: int(-1), end: int(2), type: 'int', name: 'j' }, ({ j }) => {
       const nx = cx.add(i);
       const ny = cy.add(j);
 

@@ -40,6 +40,30 @@ function setupWebGPU() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(config.BACKGROUND_COLOR);
   document.body.appendChild(renderer.domElement);
+
+  let hasError = false;
+  renderer.onError = (info) => {
+    if (hasError) return;
+    hasError = true;
+    renderer.setAnimationLoop(null);
+    
+    const errDiv = document.createElement('div');
+    errDiv.style.position = 'absolute';
+    errDiv.style.bottom = '20px';
+    errDiv.style.left = '20px';
+    errDiv.style.background = 'rgba(20, 0, 0, 0.9)';
+    errDiv.style.color = '#ff6666';
+    errDiv.style.padding = '12px';
+    errDiv.style.fontFamily = 'monospace';
+    errDiv.style.fontSize = '12px';
+    errDiv.style.zIndex = '9999';
+    errDiv.style.borderRadius = '4px';
+    errDiv.style.pointerEvents = 'none';
+    errDiv.innerHTML = `<strong>WebGPU Error:</strong><br>${info.message || info.type}`;
+    document.body.appendChild(errDiv);
+    
+    console.error("Uncaptured WebGPU Error:", info);
+  };
 }
 
 function createScene() {

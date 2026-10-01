@@ -69,6 +69,9 @@
 - 2026-10-01: Hito A implementado — núcleo 100% WebGPU. Flocking por cuadrícula 
   toroidal con sumas atómicas (punto fijo). Flow field regenerado con value noise
   y tiempo, y mapa de influencia de mouse. Render con `SpriteNodeMaterial` instanciado.
+- 2026-10-01: Corrección de error en pipeline WebGPU por sintaxis de iteradores en TSL.
+  Se corrigió el uso de `Loop` en `agents.js` añadiendo nombres explícitos y se
+  implementó un guardián visual de errores (`renderer.onError`) en `main.js`.
 
 ---
 
