@@ -18,6 +18,12 @@
 - Restricciones permanentes: usar solo Steering, Flocking, Flow Field y
   Physarum; prohibido analizar el audio (BPM, amplitud, espectro, FFT);
   el usuario nunca controla agentes individuales.
+- Control de versiones: al terminar cada avance o cambio importante,
+  una vez que `npm run build` pase sin errores y AGENTS.md esté
+  actualizado, hacer `git add`, `git commit` con un mensaje claro en
+  español y `git push` a la rama main. Nunca usar `--force`, nunca
+  reescribir el historial, y si el push falla, informar a la autora en
+  vez de intentar soluciones alternativas.
 
 ---
 
@@ -28,12 +34,13 @@
   GitHub Pages con base './'). Todo el código de simulación, UI,
   README y guías de la plantilla ha sido eliminado.
 - Funciona: escena Three.js mínima (fondo #05060d, un punto blanco
-  cálido, pantalla completa, resize, animation loop). Compila con
-  `npm run build`.
+  cálido con textura de degradado radial y blending aditivo, pantalla
+  completa, resize, animation loop). Compila con `npm run build`.
 - Pendiente: decidir arquitectura de renderizado y cómputo, y empezar Fase 1
 - Decisiones abiertas: CPU vs GPU (WebGL o WebGPU), número de agentes objetivo
-- Nota: `src/main.js` usa `THREE.WebGLRenderer` de forma provisional
-  para verificación; esto NO constituye una decisión de arquitectura.
+- Nota: `src/main.js` usa `THREE.WebGLRenderer`, `PointsMaterial` con
+  textura canvas y blending aditivo de forma provisional para
+  verificación; esto NO constituye una decisión de arquitectura.
 
 ## Registro de cambios
 
@@ -46,6 +53,10 @@
   GUIA_ESTUDIANTE.md, PRUEBAS_Y_DEPURACION.md, dist/, src/simulation/,
   src/ui/, src/styles.css. Reescritos index.html y src/main.js (escena
   mínima). Creado .agents/rules/. Build verificado.
+- 2026-10-01: punto central reemplazado por partícula luminosa suave
+  (textura radial canvas, blending aditivo, tamaño fijo retina).
+  Añadida regla de control de versiones a AGENTS.md. Renombrado
+  package.json a "contemplar-lo-infinito".
 
 ---
 
