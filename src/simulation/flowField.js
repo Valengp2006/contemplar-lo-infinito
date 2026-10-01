@@ -16,7 +16,7 @@ import {
 
 import {
   Fn, uniform, float, vec2, ivec2, vec4, uint,
-  instanceIndex, textureStore, textureLoad,
+  instanceIndex, textureStore, textureLoad, storageTexture,
   sin, cos, floor, fract, mix, abs, clamp,
   length, normalize, smoothstep, atan,
   hash,
@@ -138,7 +138,7 @@ export const updateMouseMapCompute = Fn(() => {
   const worldPos = vec2(uv.x.mul(uWorldWidth), uv.y);
 
   // Leer valor anterior y decaer
-  const prev = textureLoad(mouseTex, ivec2(texX, texY)).x.toVar();
+  const prev = textureLoad(storageTexture(mouseTex), ivec2(texX, texY)).x.toVar();
   const decayed = prev.mul(float(1.0).sub(clamp(uDt.mul(config.MOUSE_DECAY_RATE), 0, 1)));
 
   // Depositar si el mouse está activo
@@ -153,7 +153,7 @@ export const updateMouseMapCompute = Fn(() => {
   const deposit = influence.mul(mouseAngle);
 
   const result = decayed.add(deposit);
-  textureStore(mouseTex, ivec2(texX, texY), vec4(result, 0, 0, 1));
+  textureStore(storageTexture(mouseTex), ivec2(texX, texY), vec4(result, 0, 0, 1));
 })().compute(MRES * MRES);
 
 /* ─── Compute: actualizar flow field ────────────────────────── */
@@ -185,12 +185,12 @@ export const updateFlowFieldCompute = Fn(() => {
   // Convertir uv a coordenadas del mouse map
   const mouseCoordX = uv.x.mul(float(MRES)).toInt();
   const mouseCoordY = uv.y.mul(float(MRES)).toInt();
-  const mouseRotation = textureLoad(mouseTex, ivec2(mouseCoordX, mouseCoordY)).x;
+  const mouseRotation = textureLoad(storageTexture(mouseTex), ivec2(mouseCoordX, mouseCoordY)).x;
 
   const finalAngle = angle.add(mouseRotation);
 
   // Dirección del campo
   const dir = vec2(cos(finalAngle), sin(finalAngle));
 
-  textureStore(flowTex, ivec2(texX, texY), vec4(dir.x, dir.y, 0, 1));
+  textureStore(storageTexture(flowTex), ivec2(texX, texY), vec4(dir.x, dir.y, 0, 1));
 })().compute(RES * RES);

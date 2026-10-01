@@ -75,6 +75,9 @@
 - 2026-10-01: Corrección de error de parseo WGSL para texturas de almacenamiento.
   Se reemplazó el uso de `vec2` por `ivec2` para las coordenadas enteras pasadas a
   `textureStore` y `textureLoad` en `flowField.js` y `agents.js`.
+- 2026-10-01: Corrección de tipos atómicos en variables de almacenamiento (WGSL).
+  Se utilizó `.toAtomic()` y `atomicLoad` para la lectura y `atomicStore` para la
+  escritura de los contadores en las celdas, ajustando `storageTexture` para texturas.
 
 ---
 

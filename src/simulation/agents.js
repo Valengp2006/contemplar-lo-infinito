@@ -1,9 +1,9 @@
 import { StorageBufferAttribute, StorageInstancedBufferAttribute } from 'three/webgpu';
 import {
   Fn, uniform, float, vec2, ivec2, vec4, uint, int,
-  instanceIndex, textureLoad,
+  instanceIndex, textureLoad, storageTexture,
   floor, fract, mix, length, normalize,
-  atomicAdd, If, Loop, storage, cos, sin, smoothstep, clamp
+  atomicAdd, atomicLoad, atomicStore, If, Loop, storage, cos, sin, smoothstep, clamp
 } from 'three/tsl';
 
 import config from '../config.js';
@@ -26,11 +26,11 @@ const cellPosYAttr  = new StorageBufferAttribute(MAX_CELLS, 1, Int32Array);
 const cellVelXAttr  = new StorageBufferAttribute(MAX_CELLS, 1, Int32Array);
 const cellVelYAttr  = new StorageBufferAttribute(MAX_CELLS, 1, Int32Array);
 
-const cellCountNode = storage(cellCountAttr, 'uint', MAX_CELLS);
-const cellPosXNode  = storage(cellPosXAttr, 'int', MAX_CELLS);
-const cellPosYNode  = storage(cellPosYAttr, 'int', MAX_CELLS);
-const cellVelXNode  = storage(cellVelXAttr, 'int', MAX_CELLS);
-const cellVelYNode  = storage(cellVelYAttr, 'int', MAX_CELLS);
+const cellCountNode = storage(cellCountAttr, 'uint', MAX_CELLS).toAtomic();
+const cellPosXNode  = storage(cellPosXAttr, 'int', MAX_CELLS).toAtomic();
+const cellPosYNode  = storage(cellPosYAttr, 'int', MAX_CELLS).toAtomic();
+const cellVelXNode  = storage(cellVelXAttr, 'int', MAX_CELLS).toAtomic();
+const cellVelYNode  = storage(cellVelYAttr, 'int', MAX_CELLS).toAtomic();
 
 // Uniforms
 export const uGridCellsX   = uniform(0);
@@ -64,11 +64,11 @@ const limitForce = Fn(([f_imm]) => {
 // 1. Limpiar celdas
 export const clearCellsCompute = Fn(() => {
   const idx = instanceIndex;
-  cellCountNode.element(idx).assign(0);
-  cellPosXNode.element(idx).assign(0);
-  cellPosYNode.element(idx).assign(0);
-  cellVelXNode.element(idx).assign(0);
-  cellVelYNode.element(idx).assign(0);
+  atomicStore(cellCountNode.element(idx), 0);
+  atomicStore(cellPosXNode.element(idx), 0);
+  atomicStore(cellPosYNode.element(idx), 0);
+  atomicStore(cellVelXNode.element(idx), 0);
+  atomicStore(cellVelYNode.element(idx), 0);
 })().compute(MAX_CELLS);
 
 // 2. Binning
@@ -141,13 +141,13 @@ export const updateAgentsCompute = Fn(() => {
       const wy = ny.mod(gridY).add(gridY).mod(gridY);
       
       const cellIdx = wy.mul(gridX).add(wx);
-      const count = cellCountNode.element(cellIdx);
+      const count = atomicLoad(cellCountNode.element(cellIdx));
 
       If(count.greaterThan(0), () => {
-        const avgPosX = cellPosXNode.element(cellIdx).toFloat().div(FIXED_SCALE).div(count.toFloat());
-        const avgPosY = cellPosYNode.element(cellIdx).toFloat().div(FIXED_SCALE).div(count.toFloat());
-        const avgVelX = cellVelXNode.element(cellIdx).toFloat().div(FIXED_SCALE).div(count.toFloat());
-        const avgVelY = cellVelYNode.element(cellIdx).toFloat().div(FIXED_SCALE).div(count.toFloat());
+        const avgPosX = atomicLoad(cellPosXNode.element(cellIdx)).toFloat().div(FIXED_SCALE).div(count.toFloat());
+        const avgPosY = atomicLoad(cellPosYNode.element(cellIdx)).toFloat().div(FIXED_SCALE).div(count.toFloat());
+        const avgVelX = atomicLoad(cellVelXNode.element(cellIdx)).toFloat().div(FIXED_SCALE).div(count.toFloat());
+        const avgVelY = atomicLoad(cellVelYNode.element(cellIdx)).toFloat().div(FIXED_SCALE).div(count.toFloat());
 
         const cellOriginX = wx.toFloat().mul(config.PERCEPTION_RADIUS);
         const cellOriginY = wy.toFloat().mul(config.PERCEPTION_RADIUS);
@@ -167,10 +167,10 @@ export const updateAgentsCompute = Fn(() => {
              const ownRelX = pos.x.sub(cellOriginX);
              const ownRelY = pos.y.sub(cellOriginY);
              
-             const sumPosX = cellPosXNode.element(cellIdx).toFloat().div(FIXED_SCALE).sub(ownRelX);
-             const sumPosY = cellPosYNode.element(cellIdx).toFloat().div(FIXED_SCALE).sub(ownRelY);
-             const sumVelX = cellVelXNode.element(cellIdx).toFloat().div(FIXED_SCALE).sub(vel.x);
-             const sumVelY = cellVelYNode.element(cellIdx).toFloat().div(FIXED_SCALE).sub(vel.y);
+             const sumPosX = atomicLoad(cellPosXNode.element(cellIdx)).toFloat().div(FIXED_SCALE).sub(ownRelX);
+             const sumPosY = atomicLoad(cellPosYNode.element(cellIdx)).toFloat().div(FIXED_SCALE).sub(ownRelY);
+             const sumVelX = atomicLoad(cellVelXNode.element(cellIdx)).toFloat().div(FIXED_SCALE).sub(vel.x);
+             const sumVelY = atomicLoad(cellVelYNode.element(cellIdx)).toFloat().div(FIXED_SCALE).sub(vel.y);
              
              const cMinus1 = count.toFloat().sub(1.0);
              const newAvgPos = vec2(cellOriginX.add(sumPosX.div(cMinus1)), cellOriginY.add(sumPosY.div(cMinus1)));
@@ -227,7 +227,7 @@ export const updateAgentsCompute = Fn(() => {
   const texX = clamp(floor(flowUvX.mul(flowResX)), 0.0, flowResX.sub(1.0)).toInt();
   const texY = clamp(floor(flowUvY.mul(flowResX)), 0.0, flowResX.sub(1.0)).toInt();
   
-  const flowDir = textureLoad(flowTex, ivec2(texX, texY)).xy;
+  const flowDir = textureLoad(storageTexture(flowTex), ivec2(texX, texY)).xy;
   const flowDesired = flowDir.mul(maxSpeed);
   const flowForce = flowDesired.sub(vel);
   
