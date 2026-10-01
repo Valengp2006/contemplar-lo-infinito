@@ -1,17 +1,48 @@
-# AGENT.md — Contemplar lo infinito
+# AGENTS.md — Contemplar lo infinito
+
+## Instrucciones para el agente de código
+
+- Este archivo es la ÚNICA fuente de verdad del proyecto.
+- El repo se creó desde una plantilla de otro trabajo del curso. De esa
+  plantilla solo se usa la infraestructura (package.json, vite.config.js
+  con base './', index.html, .github/workflows/deploy.yml y la dependencia
+  de three). Su código de simulación, UI, README y guías NO tienen relación
+  con este proyecto: no usarlos como referencia ni como arquitectura.
+- No tomar decisiones técnicas grandes sin aprobación de la autora
+  (por ejemplo: CPU vs GPU, WebGL vs WebGPU, cambiar de librería).
+- No borrar archivos sin mostrar antes la lista y recibir aprobación.
+- Después de cada avance o cambio importante, actualizar solo "Estado del
+  proyecto", "Registro de cambios" y, si cambió la estructura de src/,
+  la sección 23. No modificar las secciones conceptuales sin que la
+  autora lo pida.
+- Restricciones permanentes: usar solo Steering, Flocking, Flow Field y
+  Physarum; prohibido analizar el audio (BPM, amplitud, espectro, FFT);
+  el usuario nunca controla agentes individuales.
+
+---
 
 ## Estado del proyecto
-- Fase actual: Prototipo 1 — agentes + flocking + flow field (CPU)
-- Base: Vite + Three.js (WebGLRenderer), simulación en CPU
-- Funciona: 800 agentes con flocking (separation, alignment, cohesion) + flow field (simplex noise)
-- Pendiente: Physarum, controles expresivos, interfaz de performance
+
+- Fase actual: 0 — reinicio limpio, sin código del proyecto
+- Base: la plantilla del curso se usa ÚNICAMENTE por su infraestructura
+  (Vite, Three.js, configuración de GitHub Pages con base './').
+  Todo su código de simulación, UI, README y guías pertenece a otro
+  trabajo y se descarta.
+- Funciona: sitio vacío publicado en GitHub Pages
+- Pendiente: decidir arquitectura de renderizado y cómputo, y empezar Fase 1
+- Decisiones abiertas: CPU vs GPU (WebGL o WebGPU), número de agentes objetivo
 
 ## Registro de cambios
-- 2026-09-30: repo creado desde la plantilla y desplegado en Pages
-- 2026-09-30: Fase 1 — fuerzas extraídas a forces.js como steering behaviors; añadidos wander y arrive; sección 23 actualizada con estructura real
-- 2026-09-30: Prototipo 1 — arquitectura migrada de GPU compute a CPU; simulación reescrita con Agent, Flock, FlowField; render con THREE.Points; panel LAB adaptado
 
-## 1. Información general
+- 2026-09-30: repo creado desde la plantilla y desplegado en Pages
+- 2026-10-01: dirección visual definida (referentes y paleta con violeta
+  y magenta desde el inicio)
+- 2026-10-01: reinicio del proyecto; se descarta el prototipo anterior
+  (CPU, 800 agentes) y todo el código derivado de la plantilla
+
+---
+
+# 1. Información general
 
 ### Actividad
 **Actividad 03 — Reto de diseño: interpretar música con agentes autónomos**
@@ -684,25 +715,55 @@ Posible enfoque:
 
 ---
 
+# 16b. Referentes visuales
+
+Fuente: tablero de referentes de la autora (partículas luminosas sobre fondo negro).
+
+Se toma el MATERIAL, no los objetos:
+- Puntos de luz muy pequeños, bordes suaves, mezcla aditiva.
+- Estelas que dejan rastro y se desvanecen.
+- Redes de filamentos azules (resultado de Physarum).
+- Concentraciones esféricas y corrientes en espiral emergentes.
+- Profundidad suave, bloom contenido.
+
+Se evita: planetas, anillos, galaxias reconocibles, colores saturados constantes.
+
+Mapa de referentes por sección musical:
+- Inicio: un solo punto brillante en el vacío.
+- Curiosidad / asombro: pequeñas concentraciones y primeras corrientes.
+- Nostalgia: redes de filamentos (huella Physarum).
+- Clímax: espirales y estructuras orgánicas con acentos de color.
+- Final: regreso al punto de luz.
+
+Nota técnica: las redes de filamentos nítidas de los referentes suelen
+requerir una gran cantidad de agentes (del orden de cientos de miles).
+Esto debe pesar en la decisión de arquitectura de la sección 23.
+
+---
+
 # 17. Paleta visual
 
 ## Decisión
+
 El violeta y el magenta están presentes desde las primeras secciones.
 La paleta no cambia de colores a lo largo de la pieza: cambia la
 CANTIDAD de color y su INTENSIDAD, siguiendo el arco emocional.
 
 ## Colores base
+
 - Fondo: negro espacial, con azul casi negro (sin gris).
 - Partículas base: azul frío y blanco cálido.
 - Color expresivo: violeta y magenta.
 - Acento puntual: dorado muy sutil, solo en los momentos de mayor carga.
 
 ## Principio
+
 La luz es escasa. El color aparece en pocas partículas y zonas, nunca
 cubriendo toda la pantalla. La saturación y el brillo se reservan para
 los momentos emotivos.
 
 ## Evolución del color por sección
+
 | Sección | Color dominante | Presencia del violeta / magenta |
 |---|---|---|
 | Inicio (calma) | Un punto blanco cálido y azul tenue | Apenas un matiz violeta en el borde de la luz |
@@ -716,14 +777,18 @@ los momentos emotivos.
 | Final | Un punto blanco cálido y azul tenue | Vuelve el matiz casi imperceptible del inicio |
 
 ## Cómo se decide el color (sin dibujarlo a mano)
+
 El color de una partícula depende de su comportamiento, no de una
 asignación manual. Por ejemplo: velocidad, densidad de vecinos
 (flocking) o intensidad de la huella (Physarum). Así el color también es
 emergente y se puede explicar.
 
 ## Regla de contención
+
 Nunca más del ~15 % de la pantalla con color saturado,
-salvo en el clímax.
+salvo en el clímax. (Cifra de partida, a ajustar viéndola en pantalla.)
+
+---
 
 # 18. Composición
 
@@ -767,7 +832,7 @@ INMENSIDAD
 DESVANECIMIENTO
   ↓
 VACÍO
-````
+```
 
 Esta progresión debe ser uno de los pilares de la experiencia.
 
@@ -894,52 +959,21 @@ La complejidad debe construirse delante del espectador.
 
 ---
 
-# 23. Arquitectura técnica para Three.js
+# 23. Arquitectura técnica
 
-## Estructura real actual
+Estado: PENDIENTE DE DECISIÓN. No hay código del proyecto todavía.
 
-El prototipo ejecuta la simulación en CPU (JavaScript). El rendering usa THREE.Points sobre WebGLRenderer. Los parámetros están centralizados en `config.js` y son modificables en tiempo real desde el panel LAB.
+La estructura de carpetas, y si la simulación corre en CPU o en GPU,
+se decide después de comparar las opciones frente a la dirección visual
+(sección 16b) y se documenta aquí cuando esté aprobada por la autora.
 
-```text
-src/
-├── main.js                           ← entrada, escena, cámara, renderer, loop, modos LAB/PERFORMANCE
-├── styles.css                        ← estilos del panel LAB y HUD
-├── simulation/
-│   ├── config.js                     ← parámetros centralizados (pesos, límites, render)
-│   ├── noise.js                      ← simplex noise 2D para el flow field
-│   ├── FlowField.js                  ← campo vectorial basado en ruido (consulta por posición)
-│   ├── Agent.js                      ← agente autónomo (posición, velocidad, steering)
-│   └── Flock.js                      ← gestor de agentes + flocking + render (THREE.Points)
-└── ui/
-    └── labPanel.js                   ← panel de desarrollo (sliders para pesos y parámetros)
-```
+Archivos que sí existen (infraestructura heredada de la plantilla):
+- package.json, vite.config.js (base './'), index.html
+- .github/workflows/deploy.yml
+- dependencia: three
 
-## Estructura prevista para fases posteriores
-
-```text
-src/
-├── main.js
-├── styles.css
-├── simulation/
-│   ├── config.js
-│   ├── noise.js
-│   ├── FlowField.js
-│   ├── Agent.js
-│   └── Flock.js
-├── physarum/
-│   ├── trailMap.js                   ← textura de depósito, difusión, decaimiento
-│   └── physarumRenderer.js           ← render de la capa de memoria visual
-├── interaction/
-│   ├── pulse.js                      ← perturbación temporal (botón PULSO)
-│   └── attraction.js                 ← punto de atracción expresivo (ATRACCIÓN)
-├── ui/
-│   ├── labPanel.js                   ← panel de desarrollo
-│   └── performanceUI.js              ← interfaz mínima de interpretación
-└── score/
-    └── performanceState.js           ← estado global (REVELACIÓN, progresión)
-```
-
-Esta estructura evolucionará fase a fase. Cada archivo nuevo se documenta en el registro de cambios.
+Regla: no se asume ninguna arquitectura de la plantilla. Esta sección
+se actualiza cada vez que se crea o cambia un archivo de src/.
 
 ---
 
@@ -1109,6 +1143,13 @@ Antes de implementar una característica, preguntar:
 
 # 31. Prioridades de desarrollo
 
+## Fase 0 — Reinicio e infraestructura
+
+* Limpiar el código heredado de la plantilla.
+* Dejar una escena Three.js mínima (fondo casi negro, un punto blanco cálido).
+* Verificar compilación y despliegue en GitHub Pages.
+* Decidir arquitectura de renderizado y cómputo (CPU/GPU, WebGL/WebGPU).
+
 ## Fase 1 — Prototipo de agentes
 
 * Crear agentes.
@@ -1148,10 +1189,10 @@ Antes de implementar una característica, preguntar:
 
 ## Fase 6 — Dirección visual
 
-* Partículas.
-* Iluminación.
+* Partículas (puntos aditivos, estelas).
+* Iluminación y bloom contenido.
+* Paleta según sección 17.
 * Fondo.
-* Bloom/glow si es necesario.
 * Densidad.
 * Escala.
 * Espacio negativo.
