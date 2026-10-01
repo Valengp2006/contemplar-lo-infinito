@@ -1,132 +1,68 @@
+/**
+ * Contemplar lo infinito — Fase 0
+ *
+ * Escena mínima de verificación: fondo casi negro (#05060d),
+ * un solo punto blanco cálido en el centro.
+ *
+ * THREE.WebGLRenderer se usa aquí SOLO como verificación provisional.
+ * La decisión de arquitectura de renderizado (CPU/GPU, WebGL/WebGPU)
+ * sigue pendiente (ver AGENTS.md §23).
+ */
+
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import './styles.css';
 
-import { CONFIG } from './simulation/config.js';
-import { FlowField } from './simulation/FlowField.js';
-import { Flock } from './simulation/Flock.js';
-import { createLabPanel } from './ui/labPanel.js';
+// ── Renderer ────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x05060d);
+document.body.appendChild(renderer.domElement);
 
-async function main() {
-  const mount = document.querySelector('#app');
+// ── Escena y cámara ─────────────────────────────────────────
+const scene = new THREE.Scene();
 
-  // ---- Scene + Camera + Renderer ----------------------------------------
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#050607');
+const camera = new THREE.OrthographicCamera(
+  -window.innerWidth / 2,   // left
+   window.innerWidth / 2,   // right
+   window.innerHeight / 2,  // top
+  -window.innerHeight / 2,  // bottom
+  0.1,
+  10,
+);
+camera.position.z = 1;
 
-  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 200);
-  camera.position.set(0, 0, 30);
-  camera.lookAt(0, 0, 0);
+// ── Punto blanco cálido ─────────────────────────────────────
+// Tamaño fijo en píxeles, sin atenuación por distancia.
+const pointGeometry = new THREE.BufferGeometry();
+pointGeometry.setAttribute(
+  'position',
+  new THREE.Float32BufferAttribute([0, 0, 0], 3),
+);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
-  mount.appendChild(renderer.domElement);
+const pointMaterial = new THREE.PointsMaterial({
+  color: 0xfff5e6,        // blanco cálido
+  size: 3,                // tamaño fijo en píxeles
+  sizeAttenuation: false, // sin atenuación por distancia
+});
 
-  const orbit = new OrbitControls(camera, renderer.domElement);
-  orbit.enableDamping = true;
-  orbit.target.set(0, 0, 0);
+const point = new THREE.Points(pointGeometry, pointMaterial);
+scene.add(point);
 
-  // ---- Simulation -------------------------------------------------------
-  const flowField = new FlowField();
-  const flock = new Flock(scene);
+// ── Resize ──────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  // ---- Mouse Interaction ------------------------------------------------
-  const raycaster = new THREE.Raycaster();
-  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-  const hit = new THREE.Vector3();
-  let isPointerDown = false;
+  camera.left   = -w / 2;
+  camera.right  =  w / 2;
+  camera.top    =  h / 2;
+  camera.bottom = -h / 2;
+  camera.updateProjectionMatrix();
 
-  const updatePointer = (event) => {
-    const pointerNdc = new THREE.Vector2(
-      (event.clientX / innerWidth) * 2 - 1,
-      -(event.clientY / innerHeight) * 2 + 1
-    );
-    raycaster.setFromCamera(pointerNdc, camera);
-    if (raycaster.ray.intersectPlane(plane, hit)) {
-      flowField.setInfluence(hit.x, hit.y, true);
-    }
-  };
+  renderer.setSize(w, h);
+});
 
-  addEventListener('pointerdown', (e) => {
-    // Si hace clic sobre el panel LAB, ignoramos para que interactúe la UI
-    if (e.target.closest('.panel')) return;
-    isPointerDown = true;
-    updatePointer(e);
-  });
-  
-  addEventListener('pointerup', () => {
-    isPointerDown = false;
-    flowField.setInfluence(0, 0, false);
-  });
-  
-  addEventListener('pointermove', (e) => {
-    if (isPointerDown) updatePointer(e);
-  });
-
-  // ---- UI ---------------------------------------------------------------
-  let paused = false;
-  let mode = 'LAB';
-
-  const panel = createLabPanel({
-    config: CONFIG,
-    onReset: () => flock.reset(),
-    onModeChange: () => setMode(mode === 'LAB' ? 'PERFORMANCE' : 'LAB'),
-    onPauseChange: () => { paused = !paused; },
-  });
-
-  const hud = document.createElement('div');
-  hud.className = 'hud';
-  document.body.append(hud);
-
-  const setMode = (next) => {
-    mode = next;
-    const lab = mode === 'LAB';
-    panel.setVisible(lab);
-    orbit.enabled = lab;
-    hud.innerHTML = lab
-      ? '<strong>LAB</strong> · P: performance · R: reset · D: debug mode'
-      : '';
-  };
-  setMode('LAB');
-
-  // ---- Keyboard ---------------------------------------------------------
-  addEventListener('keydown', (event) => {
-    if (event.repeat) return;
-    if (event.code === 'KeyP') setMode(mode === 'LAB' ? 'PERFORMANCE' : 'LAB');
-    if (event.code === 'KeyR') flock.reset();
-    if (event.code === 'KeyD') flock.toggleDebug();
-  });
-
-  // ---- Resize -----------------------------------------------------------
-  addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-  });
-
-  // ---- Animation loop ---------------------------------------------------
-  const clock = new THREE.Clock();
-
-  renderer.setAnimationLoop(() => {
-    const dt = clock.getDelta();
-    const elapsed = clock.getElapsedTime();
-
-    if (!paused) {
-      // Limitar dt para que si cambias de pestaña, la simulación no salte muy lejos
-      const safeDt = Math.min(dt, 0.1); 
-      flock.update(safeDt, flowField, elapsed);
-    }
-
-    orbit.update();
-    renderer.render(scene, camera);
-  });
-}
-
-main().catch((error) => {
-  console.error(error);
-  const pre = document.createElement('pre');
-  pre.style.cssText = 'position:fixed;inset:16px;white-space:pre-wrap;color:#fff;z-index:50';
-  pre.textContent = String(error?.stack || error);
-  document.body.append(pre);
+// ── Loop ────────────────────────────────────────────────────
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
 });

@@ -23,14 +23,17 @@
 
 ## Estado del proyecto
 
-- Fase actual: 0 — reinicio limpio, sin código del proyecto
-- Base: la plantilla del curso se usa ÚNICAMENTE por su infraestructura
-  (Vite, Three.js, configuración de GitHub Pages con base './').
-  Todo su código de simulación, UI, README y guías pertenece a otro
-  trabajo y se descarta.
-- Funciona: sitio vacío publicado en GitHub Pages
+- Fase actual: 0 — limpieza completada, escena mínima verificada
+- Base: solo queda la infraestructura del curso (Vite, Three.js,
+  GitHub Pages con base './'). Todo el código de simulación, UI,
+  README y guías de la plantilla ha sido eliminado.
+- Funciona: escena Three.js mínima (fondo #05060d, un punto blanco
+  cálido, pantalla completa, resize, animation loop). Compila con
+  `npm run build`.
 - Pendiente: decidir arquitectura de renderizado y cómputo, y empezar Fase 1
 - Decisiones abiertas: CPU vs GPU (WebGL o WebGPU), número de agentes objetivo
+- Nota: `src/main.js` usa `THREE.WebGLRenderer` de forma provisional
+  para verificación; esto NO constituye una decisión de arquitectura.
 
 ## Registro de cambios
 
@@ -39,6 +42,10 @@
   y magenta desde el inicio)
 - 2026-10-01: reinicio del proyecto; se descarta el prototipo anterior
   (CPU, 800 agentes) y todo el código derivado de la plantilla
+- 2026-10-01: limpieza de Fase 0 ejecutada — eliminados README.md,
+  GUIA_ESTUDIANTE.md, PRUEBAS_Y_DEPURACION.md, dist/, src/simulation/,
+  src/ui/, src/styles.css. Reescritos index.html y src/main.js (escena
+  mínima). Creado .agents/rules/. Build verificado.
 
 ---
 
