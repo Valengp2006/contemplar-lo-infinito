@@ -24,20 +24,29 @@
   español y `git push` a la rama main. Nunca usar `--force`, nunca
   reescribir el historial, y si el push falla, informar a la autora en
   vez de intentar soluciones alternativas.
+- Documentos complementarios: `docs/prototipo-1-especificacion.md` manda
+  sobre la CALIDAD del comportamiento del núcleo (agentes, flow field,
+  flocking, steering, mouse, vacío, velocidad lenta).
+  `docs/funcionalidad-completa.md` define el ALCANCE funcional completo
+  (controles, revelación, Physarum, pulso, atracción, final, HUD, audio,
+  rendimiento y orden de hitos). Si hay contradicción entre documentos,
+  no decidir: listar las contradicciones y esperar respuesta de la autora.
 
 ---
 
 ## Estado del proyecto
 
-- Fase actual: 0 — limpieza completada, escena mínima verificada
-- Base: solo queda la infraestructura del curso (Vite, Three.js,
-  GitHub Pages con base './'). Todo el código de simulación, UI,
-  README y guías de la plantilla ha sido eliminado.
-- Funciona: escena Three.js mínima (fondo #05060d, un punto blanco
-  cálido con textura de degradado radial y blending aditivo, pantalla
-  completa, resize, animation loop). Compila con `npm run build`.
-- Pendiente: decidir arquitectura de renderizado y cómputo, y empezar Fase 1
-- Decisiones abiertas: CPU vs GPU (WebGL o WebGPU), número de agentes objetivo
+- Fase actual: Hito A — Núcleo
+- Base: infraestructura de Vite y Three.js.
+- Funciona: 
+  - Renderizado en WebGPU con `SpriteNodeMaterial` (instancing).
+  - Compute shaders para Flow Field y Agentes.
+  - El Flow field evoluciona en el tiempo e incluye influencia temporal del mouse (mapa de memoria).
+  - Flocking O(N) optimizado mediante *binning* atómico en celdas espaciales de punto fijo (toroidal).
+  - Steering limitado y wander orgánico, todo con ±15% de variación por agente usando TSL hashes.
+  - Distribución dispersa inicial orgánica (rechazo sobre pseudo-noise 2D).
+- Pendiente: Hito B (Memoria e interacción)
+- Decisiones tomadas: WebGPU (100% compute), instancing (ya que WebGPU no escala `Points`), cuadrícula toroidal punto fijo para flocking.
 - Nota: `src/main.js` usa `THREE.WebGLRenderer`, `PointsMaterial` con
   textura canvas y blending aditivo de forma provisional para
   verificación; esto NO constituye una decisión de arquitectura.
@@ -57,6 +66,9 @@
   (textura radial canvas, blending aditivo, tamaño fijo retina).
   Añadida regla de control de versiones a AGENTS.md. Renombrado
   package.json a "contemplar-lo-infinito".
+- 2026-10-01: Hito A implementado — núcleo 100% WebGPU. Flocking por cuadrícula 
+  toroidal con sumas atómicas (punto fijo). Flow field regenerado con value noise
+  y tiempo, y mapa de influencia de mouse. Render con `SpriteNodeMaterial` instanciado.
 
 ---
 
@@ -1261,3 +1273,15 @@ Antes de implementar una característica, preguntar:
 > El objetivo no es representar literalmente el espacio, sino transmitir la sensación de contemplar algo inmenso que no podemos comprender completamente.
 >
 > **El universo emerge. El intérprete lo observa, lo perturba y lo guía. Los agentes construyen algo que ninguno de ellos puede comprender. Al final, todo desaparece y solo queda la contemplación.**
+
+# 23. Arquitectura del código
+
+Estructura actual (`src/`):
+
+- `main.js`: entrada principal. Configura WebGPU, maneja inputs (F, P, D, 1-5), redimensionado (con unidades normalizadas `[0, aspect] x [0, 1]`) y el loop de render/compute.
+- `config.js`: fuente de la verdad para parámetros. Variables de simulación en unidades de mundo / s.
+- `simulation/`
+  - `agents.js`: shaders de cómputo para los agentes (binning, flocking O(N) con atómicos en punto fijo, exclusión del propio agente, limits de fuerzas y steering, wander, integración y espacio toroidal).
+  - `flowField.js`: shaders de cómputo para el Flow Field (textura `flowTex` usando value noise 2D + tiempo) y el mapa del mouse (`mouseTex` acumulado con decaimiento temporal).
+- `rendering/`
+  - `particles.js`: InstancedMesh de sprites (para soportar tamaño de partículas en WebGPU) y `SpriteNodeMaterial` en aditivo. Distribución inicial aleatoria basada en un ruido CPU de baja frecuencia.
