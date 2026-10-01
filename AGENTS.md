@@ -72,6 +72,9 @@
 - 2026-10-01: Corrección de error en pipeline WebGPU por sintaxis de iteradores en TSL.
   Se corrigió el uso de `Loop` en `agents.js` añadiendo nombres explícitos y se
   implementó un guardián visual de errores (`renderer.onError`) en `main.js`.
+- 2026-10-01: Corrección de error de parseo WGSL para texturas de almacenamiento.
+  Se reemplazó el uso de `vec2` por `ivec2` para las coordenadas enteras pasadas a
+  `textureStore` y `textureLoad` en `flowField.js` y `agents.js`.
 
 ---
 

@@ -1,6 +1,6 @@
 import { StorageBufferAttribute, StorageInstancedBufferAttribute } from 'three/webgpu';
 import {
-  Fn, uniform, float, vec2, vec4, uint, int,
+  Fn, uniform, float, vec2, ivec2, vec4, uint, int,
   instanceIndex, textureLoad,
   floor, fract, mix, length, normalize,
   atomicAdd, If, Loop, storage, cos, sin, smoothstep, clamp
@@ -227,7 +227,7 @@ export const updateAgentsCompute = Fn(() => {
   const texX = clamp(floor(flowUvX.mul(flowResX)), 0.0, flowResX.sub(1.0)).toInt();
   const texY = clamp(floor(flowUvY.mul(flowResX)), 0.0, flowResX.sub(1.0)).toInt();
   
-  const flowDir = textureLoad(flowTex, vec2(texX, texY)).xy;
+  const flowDir = textureLoad(flowTex, ivec2(texX, texY)).xy;
   const flowDesired = flowDir.mul(maxSpeed);
   const flowForce = flowDesired.sub(vel);
   
