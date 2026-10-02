@@ -7,7 +7,7 @@
  *
  * Interpretación: mover el mouse = RUMBO local · rueda / dos dedos = RUMBO global ·
  *   mantener clic = ATRACCIÓN · ↑ / ↓ = MEMORIA · barra espaciadora = PULSO ·
- *   R / Shift+R = REVELACIÓN · E = FINAL · 4 = CUERPO · 5 = SISTEMA · 6 = disolver cuerpos.
+ *   R / Shift+R = REVELACIÓN · E = FINAL · 4 = CUERPO nuevo · 5 = reunirlos en SISTEMA · 6 = disolver.
  * Sesión: clic = comenzar · F pantalla completa · P pausa (música y simulación).
  * Desarrollo: M modo · T panel · D fps · 1..3 cantidad fija (con transición suave; dispersa cuerpos).
  */
@@ -185,7 +185,7 @@ async function main() {
         `revelación     ${instrument.level.toFixed(2)} → ${instrument.levelTarget}${s.countOverride ? '  (cantidad fija)' : ''}`,
         `memoria        ${instrument.memorySeconds().toFixed(1)} s`,
         `atracción      ${(s.attractOn * 100).toFixed(0)} %   pulsos ${s.pulses.length}`,
-        `cuerpos        ${s.bodies.length}${s.systems.length ? `  (sistemas ${s.systems.length})` : ''}`,
+        `cuerpos        ${s.bodies.length}${s.system ? `  (en el sistema ${s.bodies.filter((b) => b.inSystem).length})` : ''}`,
         s.final ? `FINAL          ${Math.round((s.final.t / config.FINAL_S) * 100)} %` : s.ended ? 'FINAL          terminado (R reinicia)' : '',
       ].filter(Boolean),
     });
@@ -266,7 +266,7 @@ async function main() {
     else if (k === '4' || k === '5') {
       const x = mouse.inside ? mouse.x : aspect / 2;
       const y = mouse.inside ? mouse.y : 0.5;
-      if (k === '4') instrument.body(x, y); else instrument.system(x, y);
+      if (k === '4') instrument.body(x, y); else instrument.system();
     } else if (k === '6') instrument.dissolve();
     else if (config.AGENT_PRESETS[e.key]) {
       instrument.setCount(config.AGENT_PRESETS[e.key]);

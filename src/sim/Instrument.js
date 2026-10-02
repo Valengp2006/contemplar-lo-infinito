@@ -8,8 +8,9 @@
  *   ATRACCIÓN   pozo en el cursor mientras se mantiene el clic
  *   PULSO       ondas anulares (barra espaciadora), hasta 4 a la vez
  *   RUMBO       deriva global del campo (rueda); el RUMBO local del mouse vive en la simulación
- *   CUERPOS     centros de gravedad invisibles que los agentes condensan (4 = cuerpo,
- *               5 = sistema que se orbita, 6 = disolver); se disuelven solos tras ~30 s
+ *   CUERPOS     centros de gravedad invisibles que los agentes condensan. 4 = un cuerpo nuevo;
+ *               5 = los cuerpos sueltos se reúnen en un sistema y se orbitan; 6 = disolver.
+ *               Los sueltos se disuelven solos tras ~30 s; los del sistema permanecen.
  *   FINAL       descenso de ~40 s hasta un único punto de luz (E)
  *
  * No usa el DOM: el banco de pruebas (tools/gpu-check.mjs) lo maneja igual que el navegador.
@@ -48,8 +49,8 @@ export function createInstrument(sim, config) {
     driftAngle: 0,
     driftTarget: 0,
     pulses: [],
-    bodies: [],              // { x, y, age, life, radius, system? }
-    systems: [],             // { cx, cy, angle }
+    bodies: [],              // { x, y, age, life, radius, inSystem, orbitR, phase, phaseTarget }
+    system: null,            // { cx, cy, angle } mientras exista un sistema
     final: null,             // { t, fromLevel, fromMemory } mientras dura el FINAL
     ended: false,
     visuals: { brightness: L.brightness[0], color: L.color[0], bloom: L.bloom[0] },
@@ -70,11 +71,22 @@ export function createInstrument(sim, config) {
     return t < 0.5 ? grow * (1 - 2.8 * t) : -0.4 * (1 - (t - 0.5) * 2);
   }
 
-  function addBodies(list) {
-    // Si no hay espacio, los más antiguos dejan su lugar
-    while (s.bodies.length + list.length > config.BODY_MAX) s.bodies.shift();
-    s.bodies.push(...list);
+  function addBody(b) {
+    // Sin espacio: primero se va el que ya se está disolviendo, si no el suelto más antiguo
+    if (s.bodies.length >= config.BODY_MAX) {
+      let k = s.bodies.findIndex((o) => o.age >= o.life);
+      if (k < 0) k = s.bodies.findIndex((o) => !o.inSystem);
+      if (k < 0) return false;
+      s.bodies.splice(k, 1);
+    }
+    s.bodies.push(b);
+    return true;
   }
+
+  // Distancia más corta entre dos ángulos (para que la fase gire por el lado corto)
+  const angleDelta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  // Diferencia con envoltura del espacio (el mundo es un toro)
+  const wrapD = (d, W) => d - W * Math.floor(d / W + 0.5);
 
   function levelCount(level) {
     return levelValue(L.agents, level, true);
@@ -135,17 +147,28 @@ export function createInstrument(sim, config) {
     U.drift.value.set(Math.cos(s.driftAngle) * config.DRIFT, Math.sin(s.driftAngle) * config.DRIFT);
 
     // ── CUERPOS: se forman, viven y se disuelven; los de un sistema se orbitan ──
-    for (const sys of s.systems) sys.angle += config.SYSTEM_ORBIT * dt;
+    // Los cuerpos del sistema viajan hacia su lugar en la órbita, repartidos alrededor del centro,
+    // nunca más rápido que BODY_SPEED (más lento que los agentes, así arrastran su materia)
+    const sys = s.system;
+    if (sys) sys.angle += config.SYSTEM_ORBIT * dt;
+    const members = s.bodies.filter((b) => b.inSystem);
+    const orbitTarget = config.SYSTEM_RADIUS * (0.7 + 0.15 * members.length);
     for (const b of s.bodies) {
       b.age += dt;
-      if (b.system) {
-        const a = b.system.angle + (b.slot / b.system.count) * Math.PI * 2;
-        b.x = b.system.cx + Math.cos(a) * config.SYSTEM_RADIUS;
-        b.y = b.system.cy + Math.sin(a) * config.SYSTEM_RADIUS;
-      }
+      if (!b.inSystem || !sys) continue;
+      const tau = config.SYSTEM_GATHER_S / 3;
+      b.orbitR = approach(b.orbitR, orbitTarget, dt, tau);
+      b.phase += angleDelta(b.phase, b.phaseTarget) * (1 - Math.exp(-dt / tau));
+      b.radius = approach(b.radius, config.SYSTEM_BODY_RADIUS, dt, tau);
+      const a = sys.angle + b.phase;
+      const dx = wrapD(sys.cx + Math.cos(a) * b.orbitR - b.x, U.world.value.x);
+      const dy = wrapD(sys.cy + Math.sin(a) * b.orbitR - b.y, 1);
+      const dist = Math.hypot(dx, dy);
+      const step = Math.min(dist, config.BODY_SPEED * dt);
+      if (dist > 1e-6) { b.x += (dx / dist) * step; b.y += (dy / dist) * step; }
     }
     s.bodies = s.bodies.filter((b) => b.age < b.life + config.BODY_RELEASE_S);
-    s.systems = s.systems.filter((sys) => s.bodies.some((b) => b.system === sys));
+    if (!s.bodies.some((b) => b.inSystem)) s.system = null;
     U.bodies.forEach((u, k) => {
       const b = s.bodies[k];
       if (!b) { u.value.set(0, 0, 0, 0.1); return; }
@@ -246,22 +269,44 @@ export function createInstrument(sim, config) {
     // CUERPOS
     body(x, y) {
       if (s.final || s.ended) return;
-      addBodies([{ x, y, age: 0, life: config.BODY_LIFE_S, radius: config.BODY_RADIUS }]);
-      signal('CUERPO');
+      if (addBody({ x, y, age: 0, life: config.BODY_LIFE_S, radius: config.BODY_RADIUS, inSystem: false })) {
+        signal('CUERPO');
+      }
     },
-    system(x, y) {
+    // Reúne los cuerpos sueltos (vivos) en el sistema: si no existe, nace en su centro común
+    system() {
       if (s.final || s.ended) return;
-      const n = config.SYSTEM_BODIES;
-      const sys = { cx: x, cy: y, angle: Math.random() * Math.PI * 2, count: n };
-      s.systems.push(sys);
-      addBodies(Array.from({ length: n }, (_, slot) => ({
-        x, y, age: 0, life: config.BODY_LIFE_S, radius: config.SYSTEM_BODY_RADIUS, system: sys, slot,
-      })));
+      const loose = s.bodies.filter((b) => !b.inSystem && b.age < b.life);
+      const members = s.bodies.filter((b) => b.inSystem);
+      if (!loose.length || members.length + loose.length < 2) return;
+      const W = U.world.value.x;
+      if (!s.system) {
+        const ref = loose[0];
+        let dx = 0, dy = 0;
+        for (const b of loose) { dx += wrapD(b.x - ref.x, W); dy += wrapD(b.y - ref.y, 1); }
+        s.system = { cx: ref.x + dx / loose.length, cy: ref.y + dy / loose.length, angle: 0 };
+      }
+      const sys = s.system;
+      for (const b of loose) {
+        const ddx = wrapD(b.x - sys.cx, W), ddy = wrapD(b.y - sys.cy, 1);
+        b.inSystem = true;
+        b.life = Infinity;                     // los del sistema permanecen hasta disolverlos
+        b.orbitR = Math.max(Math.hypot(ddx, ddy), 1e-3);
+        b.phase = Math.atan2(ddy, ddx) - sys.angle;
+      }
+      // Fases repartidas por igual, respetando el orden en que ya estaban alrededor del centro
+      const all = s.bodies.filter((b) => b.inSystem);
+      const norm = (a) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      all.sort((a, b) => norm(a.phase) - norm(b.phase));
+      const start = all[0].phase;
+      all.forEach((b, k) => { b.phaseTarget = start + (k / all.length) * Math.PI * 2; });
       signal('SISTEMA');
     },
     dissolve() {
       let any = false;
-      for (const b of s.bodies) if (b.age < b.life) { b.life = Math.max(b.age, config.BODY_GROW_S * 0.5); any = true; }
+      for (const b of s.bodies) {
+        if (b.age < b.life) { b.life = Math.max(b.age, config.BODY_GROW_S * 0.5); any = true; }
+      }
       if (any) signal('DISOLUCIÓN');
     },
 
