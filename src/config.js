@@ -57,6 +57,12 @@ const config = {
 
   // ── Tiempo ───────────────────────────────────────────────────
   MAX_DT: 1 / 30,
+
+  // ── Interfaz y música ────────────────────────────────────────
+  START_MODE: 'performance',  // 'performance' (pantalla limpia) o 'dev'; ?modo=dev en la URL lo fuerza
+  CURSOR_HIDE_MS: 3000,       // en performance el cursor se oculta tras este tiempo quieto
+  METRICS_GRAPH_SECONDS: 5,   // segundos visibles en la gráfica de tiempo por cuadro
+  MUSIC_VOLUME: 1.0,
 };
 
 export default config;

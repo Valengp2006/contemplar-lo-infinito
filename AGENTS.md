@@ -38,6 +38,8 @@
 
 - Fase actual: Hito A (núcleo) reescrito desde cero por Claude; pendiente de probar en la Mac de la autora.
 - Arquitectura: WebGPU con Three.js 0.185.1 (`three/webgpu` + `three/tsl`), simulación 100 % en GPU con compute.
+- Interfaz en dos modos (tecla M; `?modo=dev` en la URL arranca en desarrollo): PERFORMANCE (por defecto) = pantalla limpia, cursor oculto a los 3 s, sin teclas de desarrollo; DESARROLLO = métricas (fps, ms por cuadro, gráfica, agentes, lienzo, tiempos) + panel de controles por secciones + control de la música + lista de teclas.
+- Música: `assets/Hans Zimmer - Interstellar Imperial Orchestra.mp3`, importada desde `src/audio/music.js` (Vite la incluye en el build). Arranca con el clic de inicio; P pausa música y simulación; se pausa sola si la pestaña deja de estar visible y se reanuda al volver (salvo pausa manual). Solo se reproduce, nunca se analiza.
 - Funciona (verificado en una GPU por software, sin errores de validación, sin NaN, estructuras emergentes): agentes con steering de Reynolds limitado, flow field tipo curl con evolución temporal, flocking por campos de densidad y momento, mapa de perturbación del mouse que decae, render con sprites suaves, aviso de errores en pantalla, panel de ajuste (T), pantalla completa (F), pausa (P), fps (D), cantidad de agentes (1 a 5).
 - NO verificado: fps reales, aspecto final en pantalla real, sensación de movimiento.
 - Pendiente: calibrar con el panel, Hito B (Physarum, MEMORIA, ATRACCIÓN, PULSO, niveles de REVELACIÓN) y Hito C (color, bloom, HUD, audio, FINAL).
@@ -48,6 +50,7 @@
 - 2026-09-30: repo creado desde la plantilla y desplegado en Pages
 - 2026-10-01: dirección visual definida (referentes y paleta con violeta y magenta desde el inicio)
 - 2026-10-01: reinicio del proyecto; se descarta el prototipo anterior
+- 2026-10-01: interfaz de desarrollo y de performance (tecla M) y música de fondo (Claude). Verificado: build, gpu-check (5.000 y 20.000) y prueba en navegador (ambos modos, pausa, música, 200.000 agentes sin errores).
 - 2026-10-01: Hito A reescrito (Claude). El intento anterior lanzaba errores de validación de GPU; la causa no se confirmó, pero se detectaron dos sospechosos en su código (atómicos sobre buffers no marcados como atómicos y más de 8 buffers por shader). La reescritura usa máximo 5 buffers por shader y atómicos con `.toAtomic()`, y se probó con un banco de pruebas que ejecuta los shaders reales en una GPU por software.
 
 ---
@@ -980,8 +983,11 @@ src/
 │   └── initialState.js      ← distribución inicial orgánica (JS)
 ├── render/
 │   └── Particles.js         ← sprites instanciados leyendo el buffer de la GPU
+├── audio/
+│   └── music.js             ← música de fondo con <audio> (sin análisis)
 └── ui/
-    ├── debugPanel.js        ← panel de ajuste (tecla T), oculto por defecto
+    ├── debugPanel.js        ← modo desarrollo: controles por secciones, música, teclas
+    ├── metrics.js           ← modo desarrollo: fps, ms por cuadro, gráfica, agentes
     └── errorOverlay.js      ← muestra el primer error de la GPU en pantalla
 ```
 
@@ -990,8 +996,10 @@ en punto fijo) → normalizar campos → actualizar mapa del mouse → actualiza
 
 Límites: máximo 5 storage buffers por shader (el límite por defecto de WebGPU es 8).
 
-Teclas: clic = comenzar · F pantalla completa · P pausa · D fps · T panel de ajuste ·
-1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
+Modos: PERFORMANCE (por defecto, pantalla limpia) y DESARROLLO (métricas + controles).
+
+Teclas: clic = comenzar (y música) · M modo · F pantalla completa · P pausa (música y simulación) ·
+D fps discreto · solo en desarrollo: T oculta el panel, 1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
 
 ---
 

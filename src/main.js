@@ -1,14 +1,21 @@
 /**
  * Contemplar lo infinito — arranque.
- * Teclas: clic = comenzar · F pantalla completa · P pausa · D fps · T panel de ajuste ·
- *         1..5 cantidad de agentes (300 / 3.000 / 20.000 / 80.000 / 200.000).
+ *
+ * Dos modos de interfaz (tecla M para alternar; ?modo=dev en la URL arranca en desarrollo):
+ *   · performance: pantalla limpia, solo la obra. El cursor se oculta solo.
+ *   · desarrollo:  métricas (izquierda) + controles y música (derecha).
+ *
+ * Teclas: clic = comenzar · M modo · F pantalla completa · P pausa (música y simulación) ·
+ *         D fps discreto · en desarrollo: T oculta el panel, 1..5 cantidad de agentes.
  */
 import * as THREE from 'three/webgpu';
 
 import config from './config.js';
 import { createSimulation } from './sim/Simulation.js';
 import { createParticles } from './render/Particles.js';
+import { createMusic } from './audio/music.js';
 import { createDebugPanel } from './ui/debugPanel.js';
+import { createMetrics } from './ui/metrics.js';
 import { showError, installGlobalErrorHandlers, setOnFirstError } from './ui/errorOverlay.js';
 
 installGlobalErrorHandlers();
@@ -42,24 +49,54 @@ async function main() {
   const sim = createSimulation(renderer, config, aspect);
   const particles = createParticles(sim, config, window.innerHeight);
   scene.add(particles.object);
-  const panel = createDebugPanel(sim, particles, config);
+  const music = createMusic(config);
+
+  const setAgents = (n) => {
+    const count = Math.min(n, config.MAX_AGENTS);
+    sim.setActive(count);
+    particles.setCount(count);
+  };
+
+  const panel = createDebugPanel({ sim, particles, config, music, setAgents });
+  const metrics = createMetrics(config);
 
   // Calentamiento: compila los pipelines ahora, para que cualquier error aparezca de inmediato
   sim.step(1 / 60, 0);
   renderer.render(scene, camera);
 
+  // ── Modo de interfaz ───────────────────────────────────────
+  const urlMode = new URLSearchParams(location.search).get('modo');
+  let mode = urlMode === 'dev' || urlMode === 'desarrollo' ? 'dev' : config.START_MODE;
+
+  function setMode(next) {
+    mode = next;
+    const dev = mode === 'dev';
+    panel.setVisible(dev);
+    metrics.setVisible(dev);
+    showCursor();
+  }
+
+  // ── Cursor: en performance se oculta tras unos segundos quieto ──
+  let cursorTimer = 0;
+  function showCursor() {
+    document.body.style.cursor = 'default';
+    clearTimeout(cursorTimer);
+    if (mode !== 'dev') {
+      cursorTimer = setTimeout(() => { document.body.style.cursor = 'none'; }, config.CURSOR_HIDE_MS);
+    }
+  }
+
   // ── Mouse: solo modifica el entorno ────────────────────────
+  // Sobre los paneles de desarrollo el mouse no toca el flow field.
   const mouse = { x: 0, y: 0, lastX: 0, lastY: 0, vx: 0, vy: 0, inside: false };
   window.addEventListener('mousemove', (e) => {
+    showCursor();
+    const overUI = e.target instanceof Element && e.target.closest('.dev-ui');
+    if (overUI) { mouse.inside = false; return; }
     mouse.x = (e.clientX / window.innerWidth) * aspect;
     mouse.y = 1 - e.clientY / window.innerHeight;
     if (!mouse.inside) { mouse.lastX = mouse.x; mouse.lastY = mouse.y; }
     mouse.inside = true;
-    document.body.style.cursor = 'default';
-    clearTimeout(window.__cursorTimer);
-    if (document.fullscreenElement) {
-      window.__cursorTimer = setTimeout(() => { document.body.style.cursor = 'none'; }, 3000);
-    }
   });
   document.addEventListener('mouseleave', () => { mouse.inside = false; });
 
@@ -78,7 +115,7 @@ async function main() {
   let last = performance.now();
   let time = 0;
   let paused = false;
-  let fpsAcc = 0, fpsFrames = 0;
+  let hudAcc = 0;
 
   function frame() {
     const now = performance.now();
@@ -93,11 +130,18 @@ async function main() {
     }
     renderer.render(scene, camera);
 
-    fpsAcc += rawDt; fpsFrames++;
-    if (fpsAcc >= 0.5) {
-      hudEl.textContent = `FPS ${Math.round(fpsFrames / fpsAcc)} · agentes ${sim.active.toLocaleString('es')}`;
-      fpsAcc = 0; fpsFrames = 0;
-    }
+    metrics.frame(rawDt, {
+      active: sim.active,
+      max: config.MAX_AGENTS,
+      canvasW: renderer.domElement.width,
+      canvasH: renderer.domElement.height,
+      dpr: renderer.getPixelRatio(),
+      simTime: time,
+      paused,
+      music,
+    });
+    hudAcc += rawDt;
+    if (hudAcc >= 0.5) { hudAcc = 0; hudEl.textContent = metrics.summary; }
   }
 
   // ── Ventana y teclas ───────────────────────────────────────
@@ -110,22 +154,42 @@ async function main() {
     particles.setViewHeight(window.innerHeight);
   });
 
-  const setAgents = (n) => {
-    const count = Math.min(n, config.MAX_AGENTS);
-    sim.setActive(count);
-    particles.setCount(count);
-  };
+  function togglePause() {
+    paused = !paused;
+    if (paused) music.pause(); else music.play();
+  }
+
+  // La música solo suena mientras la pestaña está a la vista. Al volver se reanuda,
+  // salvo que la intérprete la hubiera pausado antes (P o el botón del panel).
+  let resumeOnShow = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      resumeOnShow = music.playing;
+      music.pause();
+    } else if (resumeOnShow && !paused) {
+      music.play();
+    }
+  });
+  window.addEventListener('pagehide', () => music.pause());
 
   window.addEventListener('keydown', (e) => {
-    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) {
+      // Los controles del panel no deben quedarse con las teclas de la obra
+      e.target.blur();
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
-    if (k === 'f') {
+    if (k === 'm') setMode(mode === 'dev' ? 'performance' : 'dev');
+    else if (k === 'f') {
       if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
       else document.exitFullscreen?.();
-    } else if (k === 'p') paused = !paused;
+    } else if (k === 'p') togglePause();
     else if (k === 'd') hudEl.style.display = hudEl.style.display === 'block' ? 'none' : 'block';
-    else if (k === 't') panel.toggle();
-    else if (config.AGENT_PRESETS[k]) setAgents(config.AGENT_PRESETS[k]);
+    else if (mode === 'dev') {
+      // Herramientas solo de desarrollo: en performance no hay cambios bruscos
+      if (k === 't') panel.toggle();
+      else if (config.AGENT_PRESETS[k]) setAgents(config.AGENT_PRESETS[k]);
+    }
   });
 
   // ── Inicio ─────────────────────────────────────────────────
@@ -135,6 +199,8 @@ async function main() {
     startEl.style.opacity = '0';
     startEl.style.pointerEvents = 'none';
     setTimeout(() => { startEl.style.display = 'none'; }, 2000);
+    music.play(); // el clic es el gesto que el navegador exige para sonar
+    setMode(mode);
     last = performance.now();
     renderer.setAnimationLoop(frame);
   }, { once: true });
