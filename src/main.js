@@ -1,246 +1,146 @@
 /**
- * Contemplar lo infinito — Main Loop (Hito A)
+ * Contemplar lo infinito — arranque.
+ * Teclas: clic = comenzar · F pantalla completa · P pausa · D fps · T panel de ajuste ·
+ *         1..5 cantidad de agentes (300 / 3.000 / 20.000 / 80.000 / 200.000).
  */
-
-import * as THREE from 'three';
-import { WebGPURenderer } from 'three/webgpu';
+import * as THREE from 'three/webgpu';
 
 import config from './config.js';
-import { 
-  initAgents, createParticles 
-} from './rendering/particles.js';
+import { createSimulation } from './sim/Simulation.js';
+import { createParticles } from './render/Particles.js';
+import { createDebugPanel } from './ui/debugPanel.js';
+import { showError, installGlobalErrorHandlers, setOnFirstError } from './ui/errorOverlay.js';
 
-import { 
-  uGridCellsX, uGridCellsY, uWorldWidth, uActiveAgents, uDt, uTime,
-  clearCellsCompute, binAgentsCompute, updateAgentsCompute 
-} from './simulation/agents.js';
+installGlobalErrorHandlers();
 
-import {
-  uTime as uFlowTime, uDt as uFlowDt, uWorldWidth as uFlowWW,
-  uMousePos, uMouseVel, uMouseActive,
-  updateMouseMapCompute, updateFlowFieldCompute 
-} from './simulation/flowField.js';
+const startEl = document.getElementById('start-screen');
+const hudEl = document.getElementById('hud');
 
-let renderer, scene, camera;
-let particlesMesh;
-let isPlaying = true;
-let isStarted = false;
-let mouseActiveTimeout;
+async function main() {
+  if (!('gpu' in navigator)) {
+    startEl.innerHTML = 'Este navegador no tiene WebGPU.<br>Abre esta página en Chrome o Edge actualizado.';
+    return;
+  }
 
-let frameCount = 0;
-let lastTime = 0;
-let fpsText = '';
-
-// Referencia de aspect ratio actual
-let currentWorldWidth = 1.0;
-
-function setupWebGPU() {
-  renderer = new WebGPURenderer({ antialias: false });
+  const renderer = new THREE.WebGPURenderer({ antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, config.MAX_DPR));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(config.BACKGROUND_COLOR);
+  renderer.setClearColor(config.BACKGROUND, 1);
   document.body.appendChild(renderer.domElement);
 
-  let hasError = false;
-  renderer.onError = (info) => {
-    if (hasError) return;
-    hasError = true;
-    renderer.setAnimationLoop(null);
-    
-    const errDiv = document.createElement('div');
-    errDiv.style.position = 'absolute';
-    errDiv.style.bottom = '20px';
-    errDiv.style.left = '20px';
-    errDiv.style.background = 'rgba(20, 0, 0, 0.9)';
-    errDiv.style.color = '#ff6666';
-    errDiv.style.padding = '12px';
-    errDiv.style.fontFamily = 'monospace';
-    errDiv.style.fontSize = '12px';
-    errDiv.style.zIndex = '9999';
-    errDiv.style.borderRadius = '4px';
-    errDiv.style.pointerEvents = 'none';
-    errDiv.innerHTML = `<strong>WebGPU Error:</strong><br>${info.message || info.type}`;
-    document.body.appendChild(errDiv);
-    
-    console.error("Uncaptured WebGPU Error:", info);
-  };
-}
+  // Un error de la GPU detiene el bucle y se muestra el PRIMERO en pantalla
+  renderer.onError = (info) => showError(`Error de WebGPU (${info.type})`, info.message);
+  setOnFirstError(() => renderer.setAnimationLoop(null));
 
-function createScene() {
-  scene = new THREE.Scene();
+  await renderer.init();
 
-  const aspect = window.innerWidth / window.innerHeight;
-  currentWorldWidth = aspect;
-
-  // Cámara ortográfica que mapea [0, aspect] x [0, 1]
-  camera = new THREE.OrthographicCamera(0, aspect, 1, 0, 0.1, 10);
+  let aspect = window.innerWidth / window.innerHeight;
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(0, aspect, 1, 0, 0.1, 10);
   camera.position.z = 1;
 
-  // Actualizar uniforms globales
-  uWorldWidth.value = aspect;
-  uFlowWW.value = aspect;
-  
-  uGridCellsX.value = Math.ceil(aspect / config.PERCEPTION_RADIUS);
-  uGridCellsY.value = Math.ceil(1.0 / config.PERCEPTION_RADIUS);
+  const sim = createSimulation(renderer, config, aspect);
+  const particles = createParticles(sim, config, window.innerHeight);
+  scene.add(particles.object);
+  const panel = createDebugPanel(sim, particles, config);
 
-  // Inicializar simulación CPU
-  initAgents(aspect);
-
-  // InstancedMesh de partículas
-  particlesMesh = createParticles();
-  scene.add(particlesMesh);
-}
-
-function handleResize() {
-  if (!renderer || !camera) return;
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-
-  renderer.setSize(w, h);
-  const aspect = w / h;
-  currentWorldWidth = aspect;
-
-  camera.left = 0;
-  camera.right = aspect;
-  camera.top = 1;
-  camera.bottom = 0;
-  camera.updateProjectionMatrix();
-
-  uWorldWidth.value = aspect;
-  uFlowWW.value = aspect;
-  uGridCellsX.value = Math.ceil(aspect / config.PERCEPTION_RADIUS);
-  uGridCellsY.value = Math.ceil(1.0 / config.PERCEPTION_RADIUS);
-}
-
-function updateMouse(e) {
-  if (!isStarted) return;
-  
-  // Convertir px a coord del mundo [0, aspect] x [0, 1]
-  const nx = (e.clientX / window.innerWidth) * currentWorldWidth;
-  const ny = 1.0 - (e.clientY / window.innerHeight); // Y invertida en coord
-
-  // Velocidad aprox
-  const dx = nx - uMousePos.value.x;
-  const dy = ny - uMousePos.value.y;
-  
-  uMousePos.value.set(nx, ny);
-  uMouseVel.value.set(dx, dy);
-  uMouseActive.value = 1.0;
-
-  clearTimeout(mouseActiveTimeout);
-  mouseActiveTimeout = setTimeout(() => {
-    uMouseActive.value = 0.0;
-    uMouseVel.value.set(0, 0);
-  }, 100);
-
-  // Mostrar cursor y ocultar si inactivo
-  document.body.style.cursor = 'default';
-  if (document.fullscreenElement) {
-    clearTimeout(window.cursorHideTimeout);
-    window.cursorHideTimeout = setTimeout(() => {
-      document.body.style.cursor = 'none';
-    }, 3000);
-  }
-}
-
-function handleKeydown(e) {
-  if (!isStarted) return;
-
-  if (e.key === 'f' || e.key === 'F') {
-    if (!document.fullscreenElement) {
-      document.body.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  } else if (e.key === 'p' || e.key === 'P') {
-    isPlaying = !isPlaying;
-  } else if (e.key === 'd' || e.key === 'D') {
-    const el = document.getElementById('fps-counter');
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  }
-
-  // Teclas ocultas para conteo de agentes
-  const counts = {
-    '1': 300,
-    '2': 3000,
-    '3': 20000,
-    '4': 80000,
-    '5': 200000
-  };
-  if (counts[e.key]) {
-    const n = Math.min(counts[e.key], config.MAX_AGENTS);
-    uActiveAgents.value = n;
-    particlesMesh.count = n;
-  }
-}
-
-async function loop() {
-  if (!isPlaying) {
-    renderer.render(scene, camera);
-    renderer.setAnimationLoop(loop);
-    return;
-  }
-
-  const now = performance.now();
-  const dtRaw = (now - lastTime) / 1000;
-  lastTime = now;
-  
-  // Limitar dt para estabilidad
-  const dt = Math.min(dtRaw, config.MAX_DT);
-
-  uDt.value = dt;
-  uFlowDt.value = dt;
-  uTime.value += dt;
-  uFlowTime.value += dt;
-
-  // 1. Flow Field (Compute)
-  await renderer.computeAsync(updateMouseMapCompute);
-  await renderer.computeAsync(updateFlowFieldCompute);
-
-  // 2. Agents (Compute)
-  await renderer.computeAsync(clearCellsCompute);
-  await renderer.computeAsync(binAgentsCompute);
-  await renderer.computeAsync(updateAgentsCompute);
-
-  // 3. Render
+  // Calentamiento: compila los pipelines ahora, para que cualquier error aparezca de inmediato
+  sim.step(1 / 60, 0);
   renderer.render(scene, camera);
 
-  // Medición FPS
-  frameCount++;
-  if (frameCount >= 30) {
-    const fps = Math.round(1 / dtRaw);
-    document.getElementById('fps-counter').innerText = `FPS: ${fps} | Agentes: ${particlesMesh.count}`;
-    frameCount = 0;
+  // ── Mouse: solo modifica el entorno ────────────────────────
+  const mouse = { x: 0, y: 0, lastX: 0, lastY: 0, vx: 0, vy: 0, inside: false };
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = (e.clientX / window.innerWidth) * aspect;
+    mouse.y = 1 - e.clientY / window.innerHeight;
+    if (!mouse.inside) { mouse.lastX = mouse.x; mouse.lastY = mouse.y; }
+    mouse.inside = true;
+    document.body.style.cursor = 'default';
+    clearTimeout(window.__cursorTimer);
+    if (document.fullscreenElement) {
+      window.__cursorTimer = setTimeout(() => { document.body.style.cursor = 'none'; }, 3000);
+    }
+  });
+  document.addEventListener('mouseleave', () => { mouse.inside = false; });
+
+  function updateMouse(rawDt) {
+    if (rawDt <= 0) return;
+    const rx = (mouse.x - mouse.lastX) / rawDt;
+    const ry = (mouse.y - mouse.lastY) / rawDt;
+    mouse.lastX = mouse.x; mouse.lastY = mouse.y;
+    const alpha = 1 - Math.exp(-rawDt / (config.MOUSE_SMOOTH_MS / 1000));
+    mouse.vx += (rx - mouse.vx) * alpha;
+    mouse.vy += (ry - mouse.vy) * alpha;
+    sim.setMouse(mouse.x, mouse.y, mouse.vx, mouse.vy, mouse.inside);
   }
 
-  renderer.setAnimationLoop(loop);
-}
+  // ── Bucle ──────────────────────────────────────────────────
+  let last = performance.now();
+  let time = 0;
+  let paused = false;
+  let fpsAcc = 0, fpsFrames = 0;
 
-function start() {
-  document.getElementById('start-screen').style.display = 'none';
-  isStarted = true;
-  lastTime = performance.now();
-  renderer.setAnimationLoop(loop);
-}
+  function frame() {
+    const now = performance.now();
+    const rawDt = Math.min((now - last) / 1000, 0.25);
+    last = now;
+    const dt = Math.min(rawDt, config.MAX_DT);
 
-async function init() {
-  // Try initialize WebGPU
-  try {
-    setupWebGPU();
-    await renderer.init();
-  } catch (err) {
-    document.getElementById('start-screen').innerHTML = 
-      "Tu navegador o dispositivo no soporta WebGPU.<br>No se puede ejecutar la simulación.";
-    return;
+    if (!paused) {
+      time += dt;
+      updateMouse(rawDt);
+      sim.step(dt, time);
+    }
+    renderer.render(scene, camera);
+
+    fpsAcc += rawDt; fpsFrames++;
+    if (fpsAcc >= 0.5) {
+      hudEl.textContent = `FPS ${Math.round(fpsFrames / fpsAcc)} · agentes ${sim.active.toLocaleString('es')}`;
+      fpsAcc = 0; fpsFrames = 0;
+    }
   }
 
-  createScene();
+  // ── Ventana y teclas ───────────────────────────────────────
+  window.addEventListener('resize', () => {
+    aspect = window.innerWidth / window.innerHeight;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.right = aspect;
+    camera.updateProjectionMatrix();
+    sim.setAspect(aspect);
+    particles.setViewHeight(window.innerHeight);
+  });
 
-  window.addEventListener('resize', handleResize);
-  window.addEventListener('mousemove', updateMouse);
-  window.addEventListener('keydown', handleKeydown);
+  const setAgents = (n) => {
+    const count = Math.min(n, config.MAX_AGENTS);
+    sim.setActive(count);
+    particles.setCount(count);
+  };
 
-  document.getElementById('start-screen').addEventListener('click', start);
+  window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if (k === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    } else if (k === 'p') paused = !paused;
+    else if (k === 'd') hudEl.style.display = hudEl.style.display === 'block' ? 'none' : 'block';
+    else if (k === 't') panel.toggle();
+    else if (config.AGENT_PRESETS[k]) setAgents(config.AGENT_PRESETS[k]);
+  });
+
+  // ── Inicio ─────────────────────────────────────────────────
+  startEl.textContent = 'CONTEMPLAR LO INFINITO — clic para comenzar';
+  startEl.style.cursor = 'pointer';
+  startEl.addEventListener('click', () => {
+    startEl.style.opacity = '0';
+    startEl.style.pointerEvents = 'none';
+    setTimeout(() => { startEl.style.display = 'none'; }, 2000);
+    last = performance.now();
+    renderer.setAnimationLoop(frame);
+  }, { once: true });
 }
 
-init();
+main().catch((err) => {
+  showError('No se pudo iniciar WebGPU', (err && (err.stack || err.message)) || String(err));
+  startEl.textContent = 'Error al iniciar — mira el mensaje de abajo';
+});

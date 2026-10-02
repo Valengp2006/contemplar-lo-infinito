@@ -36,48 +36,19 @@
 
 ## Estado del proyecto
 
-- Fase actual: Hito A — Núcleo
-- Base: infraestructura de Vite y Three.js.
-- Funciona: 
-  - Renderizado en WebGPU con `SpriteNodeMaterial` (instancing).
-  - Compute shaders para Flow Field y Agentes.
-  - El Flow field evoluciona en el tiempo e incluye influencia temporal del mouse (mapa de memoria).
-  - Flocking O(N) optimizado mediante *binning* atómico en celdas espaciales de punto fijo (toroidal).
-  - Steering limitado y wander orgánico, todo con ±15% de variación por agente usando TSL hashes.
-  - Distribución dispersa inicial orgánica (rechazo sobre pseudo-noise 2D).
-- Pendiente: Hito B (Memoria e interacción)
-- Decisiones tomadas: WebGPU (100% compute), instancing (ya que WebGPU no escala `Points`), cuadrícula toroidal punto fijo para flocking.
-- Nota: `src/main.js` usa `THREE.WebGLRenderer`, `PointsMaterial` con
-  textura canvas y blending aditivo de forma provisional para
-  verificación; esto NO constituye una decisión de arquitectura.
+- Fase actual: Hito A (núcleo) reescrito desde cero por Claude; pendiente de probar en la Mac de la autora.
+- Arquitectura: WebGPU con Three.js 0.185.1 (`three/webgpu` + `three/tsl`), simulación 100 % en GPU con compute.
+- Funciona (verificado en una GPU por software, sin errores de validación, sin NaN, estructuras emergentes): agentes con steering de Reynolds limitado, flow field tipo curl con evolución temporal, flocking por campos de densidad y momento, mapa de perturbación del mouse que decae, render con sprites suaves, aviso de errores en pantalla, panel de ajuste (T), pantalla completa (F), pausa (P), fps (D), cantidad de agentes (1 a 5).
+- NO verificado: fps reales, aspecto final en pantalla real, sensación de movimiento.
+- Pendiente: calibrar con el panel, Hito B (Physarum, MEMORIA, ATRACCIÓN, PULSO, niveles de REVELACIÓN) y Hito C (color, bloom, HUD, audio, FINAL).
+- Decisión de flocking: NO usa vecinos individuales. Los agentes depositan masa y velocidad en una rejilla (bilineal) y cada agente percibe esos campos a su alrededor: alineación con el momento medio, cohesión subiendo el gradiente de densidad, separación como presión cuando la densidad local supera `CROWD_LIMIT`. Se resta la contribución del propio agente. Produce agrupaciones suaves; las agrupaciones nunca se parecen a "bolas" de vecinos exactos.
 
 ## Registro de cambios
 
 - 2026-09-30: repo creado desde la plantilla y desplegado en Pages
-- 2026-10-01: dirección visual definida (referentes y paleta con violeta
-  y magenta desde el inicio)
+- 2026-10-01: dirección visual definida (referentes y paleta con violeta y magenta desde el inicio)
 - 2026-10-01: reinicio del proyecto; se descarta el prototipo anterior
-  (CPU, 800 agentes) y todo el código derivado de la plantilla
-- 2026-10-01: limpieza de Fase 0 ejecutada — eliminados README.md,
-  GUIA_ESTUDIANTE.md, PRUEBAS_Y_DEPURACION.md, dist/, src/simulation/,
-  src/ui/, src/styles.css. Reescritos index.html y src/main.js (escena
-  mínima). Creado .agents/rules/. Build verificado.
-- 2026-10-01: punto central reemplazado por partícula luminosa suave
-  (textura radial canvas, blending aditivo, tamaño fijo retina).
-  Añadida regla de control de versiones a AGENTS.md. Renombrado
-  package.json a "contemplar-lo-infinito".
-- 2026-10-01: Hito A implementado — núcleo 100% WebGPU. Flocking por cuadrícula 
-  toroidal con sumas atómicas (punto fijo). Flow field regenerado con value noise
-  y tiempo, y mapa de influencia de mouse. Render con `SpriteNodeMaterial` instanciado.
-- 2026-10-01: Corrección de error en pipeline WebGPU por sintaxis de iteradores en TSL.
-  Se corrigió el uso de `Loop` en `agents.js` añadiendo nombres explícitos y se
-  implementó un guardián visual de errores (`renderer.onError`) en `main.js`.
-- 2026-10-01: Corrección de error de parseo WGSL para texturas de almacenamiento.
-  Se reemplazó el uso de `vec2` por `ivec2` para las coordenadas enteras pasadas a
-  `textureStore` y `textureLoad` en `flowField.js` y `agents.js`.
-- 2026-10-01: Corrección de tipos atómicos en variables de almacenamiento (WGSL).
-  Se utilizó `.toAtomic()` y `atomicLoad` para la lectura y `atomicStore` para la
-  escritura de los contadores en las celdas, ajustando `storageTexture` para texturas.
+- 2026-10-01: Hito A reescrito (Claude). El intento anterior lanzaba errores de validación de GPU; la causa no se confirmó, pero se detectaron dos sospechosos en su código (atómicos sobre buffers no marcados como atómicos y más de 8 buffers por shader). La reescritura usa máximo 5 buffers por shader y atómicos con `.toAtomic()`, y se probó con un banco de pruebas que ejecuta los shaders reales en una GPU por software.
 
 ---
 
@@ -1000,19 +971,27 @@ La complejidad debe construirse delante del espectador.
 
 # 23. Arquitectura técnica
 
-Estado: PENDIENTE DE DECISIÓN. No hay código del proyecto todavía.
+```text
+src/
+├── main.js                  ← arranque: WebGPURenderer, bucle, mouse, teclas
+├── config.js                ← TODOS los parámetros (unidades: alto = 1)
+├── sim/
+│   ├── Simulation.js        ← compute en GPU: rejilla, mouse, agentes
+│   └── initialState.js      ← distribución inicial orgánica (JS)
+├── render/
+│   └── Particles.js         ← sprites instanciados leyendo el buffer de la GPU
+└── ui/
+    ├── debugPanel.js        ← panel de ajuste (tecla T), oculto por defecto
+    └── errorOverlay.js      ← muestra el primer error de la GPU en pantalla
+```
 
-La estructura de carpetas, y si la simulación corre en CPU o en GPU,
-se decide después de comparar las opciones frente a la dirección visual
-(sección 16b) y se documenta aquí cuando esté aprobada por la autora.
+Pipeline por frame (5 kernels): limpiar rejilla → depositar agentes (atómicos enteros
+en punto fijo) → normalizar campos → actualizar mapa del mouse → actualizar agentes.
 
-Archivos que sí existen (infraestructura heredada de la plantilla):
-- package.json, vite.config.js (base './'), index.html
-- .github/workflows/deploy.yml
-- dependencia: three
+Límites: máximo 5 storage buffers por shader (el límite por defecto de WebGPU es 8).
 
-Regla: no se asume ninguna arquitectura de la plantilla. Esta sección
-se actualiza cada vez que se crea o cambia un archivo de src/.
+Teclas: clic = comenzar · F pantalla completa · P pausa · D fps · T panel de ajuste ·
+1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
 
 ---
 
