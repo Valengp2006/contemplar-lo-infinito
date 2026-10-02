@@ -6,7 +6,8 @@
  * Uso:   npm run gpu-check            (5.000 agentes, 30 s simulados)
  *        N=20000 T=45 npm run gpu-check
  *        LEVEL=3 npm run gpu-check     (nivel de REVELACIÓN; sin LEVEL se fija la cantidad N)
- * Durante la prueba se lanzan PULSOS y se mantiene una ATRACCIÓN para validar sus shaders.
+ * Durante la prueba se lanzan PULSOS, se crean un CUERPO y un SISTEMA y se mantiene una
+ * ATRACCIÓN para validar sus shaders (los cuerpos siguen vivos en la foto final).
  * Salida: tools/out/gpu-check.png
  *
  * Nota: mide estabilidad y comportamiento, no los fps del navegador.
@@ -85,6 +86,8 @@ while (time < T) {
   if (Math.abs(time - T * 0.3) < dt / 2) instrument.pulse(aspect * 0.5, 0.5);
   if (Math.abs(time - T * 0.35) < dt / 2) instrument.pulse(aspect * 0.3, 0.6);
   instrument.setAttract(time > T * 0.5 && time < T * 0.6, aspect * 0.7, 0.4);
+  if (Math.abs(time - T * 0.4) < dt / 2) instrument.body(aspect * 0.3, 0.35);
+  if (Math.abs(time - T * 0.45) < dt / 2) instrument.system(aspect * 0.65, 0.6);
   tick();
 }
 await device.queue.onSubmittedWorkDone();

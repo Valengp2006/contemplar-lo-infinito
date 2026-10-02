@@ -4,7 +4,7 @@
  * Cadena de comportamiento por agente (nunca cuatro efectos independientes):
  *   flow field (corriente local + deriva global + mouse)
  *   → flocking (vecinos percibidos en campos de densidad y momento)
- *   → steering (incluye sensores de huella Physarum, atracción y onda de pulso)
+ *   → steering (incluye sensores de huella Physarum, atracción, cuerpos y onda de pulso)
  *   → huella (cada agente deposita en el mapa de memoria)
  *
  * Percepción local: cada agente solo percibe los campos de su alrededor inmediato
@@ -95,6 +95,7 @@ export function createSimulation(renderer, config, aspect) {
 
     wFlow: uniform(config.W_FLOW),
     flowScale: uniform(config.FLOW_SCALE),
+    lvlScale: uniform(1),                             // la REVELACIÓN agranda las corrientes
     flowSpeed: uniform(config.FLOW_SPEED),
     flowGain: uniform(config.FLOW_GAIN),
     octA: uniform(new THREE.Vector4(1, 0, 0, 0)),   // pesos efectivos de las octavas 1–4
@@ -116,6 +117,15 @@ export function createSimulation(renderer, config, aspect) {
     attractRadius: uniform(config.ATTRACT_RADIUS),
     wAttract: uniform(config.W_ATTRACT),
     attractCoh: uniform(config.ATTRACT_COHESION),
+
+    // CUERPOS: centros de gravedad invisibles (x, y, intensidad −1..1, radio). Los agentes
+    // los perciben y forman núcleos luminosos; intensidad negativa = la materia se dispersa.
+    bodies: Array.from({ length: config.BODY_MAX }, () => uniform(new THREE.Vector4(0, 0, 0, 0.1))),
+    wBody: uniform(config.W_BODY),
+    bodySpin: uniform(config.BODY_SPIN),
+    bodyCoh: uniform(config.BODY_COHESION),
+    bodyCore: uniform(config.BODY_CORE),
+    bodyRelax: uniform(config.BODY_RELAX),
 
     pulse0: uniform(new THREE.Vector4(0, 0, 0, 0)),   // x, y, radio del frente, amplitud
     pulse1: uniform(new THREE.Vector4(0, 0, 0, 0)),
@@ -171,7 +181,7 @@ export function createSimulation(renderer, config, aspect) {
   });
 
   const flowAt = Fn(([p]) => {
-    const q = p.mul(U.flowScale);
+    const q = p.mul(U.flowScale).mul(U.lvlScale);
     const t = U.time.mul(U.flowSpeed);
     const e = float(0.02);
     const dx = flowPsi(q.add(vec2(e, 0)), t).sub(flowPsi(q.sub(vec2(e, 0)), t));
@@ -340,6 +350,25 @@ export function createSimulation(renderer, config, aspect) {
       const rAttr = length(toAttr);
       const attrFall = float(1).sub(smoothstep(0, U.attractRadius, rAttr)).mul(U.attractOn);
 
+      // ---- CUERPOS: cada agente percibe los centros de gravedad cercanos ----
+      // Dentro del radio se curva hacia el centro con un giro (la materia rota y se condensa);
+      // con intensidad negativa se aleja (el cuerpo se disuelve y su materia vuelve al polvo).
+      const bodySteer = vec2(0, 0).toVar();
+      const bodyIn = float(0).toVar();
+      for (const B of U.bodies) {
+        const d = wrapDelta(B.xy.sub(pos));
+        const r = length(d);
+        const fall = float(1).sub(smoothstep(0, B.w, r)).mul(B.z);
+        const radial = d.div(max(r, 1e-4));
+        const tangent = vec2(radial.y.negate(), radial.x);
+        // Fuera del núcleo cae girando; dentro, caída y giro se apagan y la materia se asienta
+        const core = clamp(r.div(B.w.mul(U.bodyCore)), 0, 1);
+        const inward = limitLen(radial.add(tangent.mul(U.bodySpin)).mul(core), float(1));
+        const desired = select(B.z.greaterThanEqual(0), inward, radial.negate()).mul(maxSpeed);
+        bodySteer.addAssign(limitLen(desired.sub(vel), maxForce).mul(fall.abs()));
+        bodyIn.assign(max(bodyIn, max(fall, 0)));
+      }
+
       // ---- PULSO: el frente de cada onda empuja hacia afuera y desvía ----
       const pulseVec = vec2(0, 0).toVar();
       const front = float(0).toVar();
@@ -373,13 +402,16 @@ export function createSimulation(renderer, config, aspect) {
       const gradRel = clamp(length(grad).mul(hx).div(max(f0.x, 1)), 0, 1);
 
       // Cohesión: subir hacia donde hay más vecinos (reforzada dentro del pozo de atracción)
-      const cohGain = U.wCoh.mul(U.lvlCoh).mul(cohAfterPulse).mul(float(1).add(attrFall.mul(U.attractCoh)));
+      const cohGain = U.wCoh.mul(U.lvlCoh).mul(cohAfterPulse)
+        .mul(float(1).add(attrFall.mul(U.attractCoh)).add(bodyIn.mul(U.bodyCoh)));
       const cohSteer = limitLen(gradDir.mul(maxSpeed).mul(gradRel).sub(vel), maxForce).mul(presence).mul(cohGain);
 
       // Separación: presión. Si la zona está demasiado densa RESPECTO A LA MEDIA, alejarse.
       const crowd = max(U.crowdFactor.mul(U.meanDensity), U.crowdMin);
       const over = clamp(f0.x.sub(crowd).div(crowd), 0, 1);
-      const sepSteer = limitLen(gradDir.negate().mul(maxSpeed).sub(vel), maxForce).mul(over).mul(U.wSep).mul(U.lvlSep);
+      // (dentro de un cuerpo la presión se relaja para que la materia pueda condensarse)
+      const sepSteer = limitLen(gradDir.negate().mul(maxSpeed).sub(vel), maxForce).mul(over).mul(U.wSep).mul(U.lvlSep)
+        .mul(float(1).sub(bodyIn.mul(U.bodyRelax)));
 
       // ---- Corriente del universo: curl + deriva global (RUMBO) + mouse (RUMBO local) ----
       const flowVec = flowAt(pos).add(U.drift).add(sampleMouse(pos).mul(U.mouseWeight));
@@ -407,7 +439,8 @@ export function createSimulation(renderer, config, aspect) {
       const attrSteer = limitLen(attrDesired.sub(vel), maxForce).mul(attrFall).mul(U.wAttract);
 
       const acc = limitLen(
-        sepSteer.add(aliSteer).add(cohSteer).add(flowSteer).add(wanderSteer).add(sensSteer).add(attrSteer),
+        sepSteer.add(aliSteer).add(cohSteer).add(flowSteer).add(wanderSteer).add(sensSteer).add(attrSteer)
+          .add(bodySteer.mul(U.wBody)),
         maxForce.mul(U.forceCap),
       ).add(pulseVec.mul(maxForce).mul(U.pulseForce));
 

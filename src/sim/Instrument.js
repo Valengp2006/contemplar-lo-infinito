@@ -8,6 +8,8 @@
  *   ATRACCIÓN   pozo en el cursor mientras se mantiene el clic
  *   PULSO       ondas anulares (barra espaciadora), hasta 4 a la vez
  *   RUMBO       deriva global del campo (rueda); el RUMBO local del mouse vive en la simulación
+ *   CUERPOS     centros de gravedad invisibles que los agentes condensan (4 = cuerpo,
+ *               5 = sistema que se orbita, 6 = disolver); se disuelven solos tras ~30 s
  *   FINAL       descenso de ~40 s hasta un único punto de luz (E)
  *
  * No usa el DOM: el banco de pruebas (tools/gpu-check.mjs) lo maneja igual que el navegador.
@@ -46,6 +48,8 @@ export function createInstrument(sim, config) {
     driftAngle: 0,
     driftTarget: 0,
     pulses: [],
+    bodies: [],              // { x, y, age, life, radius, system? }
+    systems: [],             // { cx, cy, angle }
     final: null,             // { t, fromLevel, fromMemory } mientras dura el FINAL
     ended: false,
     visuals: { brightness: L.brightness[0], color: L.color[0], bloom: L.bloom[0] },
@@ -56,6 +60,21 @@ export function createInstrument(sim, config) {
 
   const memorySeconds = () => Math.exp(logMin + (logMax - logMin) * s.memory);
   const worldDiag = () => Math.hypot(U.world.value.x, 1);
+
+  // Intensidad de un cuerpo: crece, se mantiene y al disolverse empuja un momento hacia
+  // afuera (−0,4) para que la materia vuelva al polvo, y luego se apaga.
+  function bodyStrength(b) {
+    const grow = smoothstep(0, config.BODY_GROW_S, b.age);
+    if (b.age < b.life) return grow;
+    const t = clamp01((b.age - b.life) / config.BODY_RELEASE_S);
+    return t < 0.5 ? grow * (1 - 2.8 * t) : -0.4 * (1 - (t - 0.5) * 2);
+  }
+
+  function addBodies(list) {
+    // Si no hay espacio, los más antiguos dejan su lugar
+    while (s.bodies.length + list.length > config.BODY_MAX) s.bodies.shift();
+    s.bodies.push(...list);
+  }
 
   function levelCount(level) {
     return levelValue(L.agents, level, true);
@@ -97,6 +116,7 @@ export function createInstrument(sim, config) {
     const w = config.FLOW_OCTAVES.map((a, k) => a * clamp01(octaves - k));
     U.octA.value.set(w[0], w[1], w[2], w[3]);
     U.octB.value = w[4];
+    U.lvlScale.value = levelValue(L.scale, lv);
 
     // ── MEMORIA: vida media de la huella ──
     if (!s.final && s.memoryInput) s.memory = clamp01(s.memory + s.memoryInput * config.MEMORY_RATE * dt);
@@ -113,6 +133,24 @@ export function createInstrument(sim, config) {
     // ── RUMBO global: la deriva gira suavemente hacia la nueva dirección ──
     s.driftAngle = approach(s.driftAngle, s.driftTarget, dt, config.DRIFT_EASE_S);
     U.drift.value.set(Math.cos(s.driftAngle) * config.DRIFT, Math.sin(s.driftAngle) * config.DRIFT);
+
+    // ── CUERPOS: se forman, viven y se disuelven; los de un sistema se orbitan ──
+    for (const sys of s.systems) sys.angle += config.SYSTEM_ORBIT * dt;
+    for (const b of s.bodies) {
+      b.age += dt;
+      if (b.system) {
+        const a = b.system.angle + (b.slot / b.system.count) * Math.PI * 2;
+        b.x = b.system.cx + Math.cos(a) * config.SYSTEM_RADIUS;
+        b.y = b.system.cy + Math.sin(a) * config.SYSTEM_RADIUS;
+      }
+    }
+    s.bodies = s.bodies.filter((b) => b.age < b.life + config.BODY_RELEASE_S);
+    s.systems = s.systems.filter((sys) => s.bodies.some((b) => b.system === sys));
+    U.bodies.forEach((u, k) => {
+      const b = s.bodies[k];
+      if (!b) { u.value.set(0, 0, 0, 0.1); return; }
+      u.value.set(b.x, b.y, bodyStrength(b), b.radius);
+    });
 
     // ── PULSO: cada onda se expande y se apaga al cruzar la pantalla ──
     const speed = worldDiag() / config.PULSE_CROSS_S;
@@ -205,10 +243,33 @@ export function createInstrument(sim, config) {
       signal('RUMBO');
     },
 
+    // CUERPOS
+    body(x, y) {
+      if (s.final || s.ended) return;
+      addBodies([{ x, y, age: 0, life: config.BODY_LIFE_S, radius: config.BODY_RADIUS }]);
+      signal('CUERPO');
+    },
+    system(x, y) {
+      if (s.final || s.ended) return;
+      const n = config.SYSTEM_BODIES;
+      const sys = { cx: x, cy: y, angle: Math.random() * Math.PI * 2, count: n };
+      s.systems.push(sys);
+      addBodies(Array.from({ length: n }, (_, slot) => ({
+        x, y, age: 0, life: config.BODY_LIFE_S, radius: config.SYSTEM_BODY_RADIUS, system: sys, slot,
+      })));
+      signal('SISTEMA');
+    },
+    dissolve() {
+      let any = false;
+      for (const b of s.bodies) if (b.age < b.life) { b.life = Math.max(b.age, config.BODY_GROW_S * 0.5); any = true; }
+      if (any) signal('DISOLUCIÓN');
+    },
+
     // FINAL
     startFinal() {
       if (s.final || s.ended) return;
       s.countOverride = null;
+      for (const b of s.bodies) if (b.age < b.life) b.life = b.age;
       s.final = { t: 0, fromLevel: s.level, fromMemory: s.memory, fromCount: Math.max(1, s.alive) };
       signal('FINAL');
     },

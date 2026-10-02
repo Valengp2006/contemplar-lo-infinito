@@ -6,7 +6,8 @@
  *   casi invisible con poca huella → azul profundo con más → blanco cálido en las
  *   intersecciones fuertes. Con MEMORIA alta y color, el azul se inclina al violeta
  *   ("violeta donde la huella persiste").
- * La huella se mide RELATIVA a su valor medio, así se ve igual con 3.000 o 200.000 agentes.
+ * La huella se mide relativa a su valor medio con la memoria por defecto: se ve igual con 3.000
+ * o 200.000 agentes, pero una MEMORIA larga la acumula (más brillo) y una corta la borra.
  */
 import * as THREE from 'three/webgpu';
 import {
@@ -67,10 +68,12 @@ export function createTrail(sim, config, aspect) {
     // Cada cuadro: valor medio esperado (para medir la huella en relativo) y visibilidad
     update(instrument) {
       const U = sim.U;
-      const tau = instrument.memorySeconds() / Math.LN2;
+      // Referencia fija (memoria por defecto): con más memoria la huella se acumula y brilla más
+      const tau = config.MEMORY_DEFAULT_S / Math.LN2;
       const deposit = U.deposit.value;
       uMean.value = Math.max((sim.alive * deposit * tau) / TN, 1e-6);
-      uVisible.value = visibility.value * clamp01(deposit / (config.DEPOSIT_RATE * 0.2));
+      // Visibilidad gradual con el nivel: nivel 0 apenas estelas, nivel 3–4 redes plenas
+      uVisible.value = visibility.value * clamp01((deposit / config.DEPOSIT_RATE) * 1.5);
       const memory = instrument.state.memory;
       uViolet.value = clamp01((memory - 0.4) / 0.5) * clamp01(instrument.visuals.color * 2);
     },

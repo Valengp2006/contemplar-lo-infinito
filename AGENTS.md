@@ -41,17 +41,21 @@
 - Interfaz en dos modos (tecla M; `?modo=dev` en la URL arranca en desarrollo): PERFORMANCE (por defecto) = la obra + HUD mínimo; DESARROLLO = métricas (fps, ms por cuadro, gráfica, agentes, nivel, memoria, atracción, pulsos) + panel con todos los controles por secciones (pieza, revelación, cantidad fija, memoria y final, visual, movimiento, flocking, flow, rumbo, atracción, pulso, physarum) + "copiar valores".
 - Música: `assets/Hans Zimmer - Interstellar Imperial Orchestra.mp3`, importada desde `src/audio/music.js`. Arranca con el clic de inicio; P pausa música y simulación; se pausa sola si la pestaña deja de estar visible. Solo se reproduce, nunca se analiza.
 - Controles de interpretación (todos modifican el ENTORNO, ninguno mueve partículas): RUMBO local (mouse, mapa que se relaja en ~2 s) · RUMBO global (rueda / dos dedos: gira una deriva lenta de todo el campo) · ATRACCIÓN (mantener clic: pozo que crece en ~1,2 s y se libera en ~2 s; seek limitado + refuerzo de cohesión) · MEMORIA (↑/↓: vida media de la huella 0,4–25 s, logarítmica) · PULSO (espacio: hasta 4 ondas anulares que cruzan en ~6 s; impulso radial + desvío; la cohesión baja 1,5 s y se recupera en 4 s) · REVELACIÓN (R / Shift+R: niveles 0–4 con transición de ~15 s) · FINAL (E: ~40 s hasta un único punto; luego R reinicia).
-- Teclas de desarrollo en ambos modos: T panel, D fps, 1–5 cantidad fija (con transición suave; R/Shift+R/E la liberan).
+- CUERPOS CELESTES (decisión de la autora, 2026-10-01): son núcleos EMERGENTES, nunca dibujados. Tecla 4 = un cuerpo en el cursor; tecla 5 = un sistema de 3 cuerpos que se orbitan; tecla 6 = disolver todos (las teclas 1–3 también los dispersan). Cada cuerpo es un centro de gravedad invisible en el entorno: los agentes dentro de su radio caen girando hacia él, se asientan en el núcleo (la presión de separación se relaja) y se ve un núcleo luminoso alimentado por corrientes. Se forma en ~4 s, vive ~30 s y se disuelve en ~7 s (un breve empuje hacia afuera devuelve la materia al polvo). Máximo 6 a la vez.
+- Teclas de desarrollo en ambos modos: T panel, D fps, 1–3 cantidad fija (con transición suave; R/Shift+R/E la liberan). 80k y 200k quedan en los botones del panel.
+- Cursor: en performance (ya iniciada la pieza) nunca se ve; en desarrollo siempre.
+- Diferencia entre estados: la huella se mide respecto a la memoria por defecto, así una MEMORIA larga acumula redes brillantes y una corta casi no deja rastro (antes se compensaba y no se notaba). La REVELACIÓN agranda las corrientes por nivel (`LEVELS.scale`) y tiene más contraste de brillo, color y resplandor; el nivel 0 deja estelas muy tenues (depósito 0,12 en lugar de 0) para que la MEMORIA también se note ahí.
 - Physarum: mapa de huellas (alto 720, ancho según la pantalla), depósito por agente con atómicos enteros, difusión 3×3 y decaimiento por vida media; tres sensores por agente giran su steering hacia el camino más marcado. Se dibuja aditivo bajo las partículas (azul profundo → blanco cálido en las intersecciones; violeta con memoria alta). La huella se mide relativa a su media, así se ve igual con cualquier cantidad.
 - Aparición escalonada: los agentes aparecen y desaparecen con un fundido de 2 s; su "masa" en los campos es ese fundido. El agente 0 es siempre el punto más cercano y cálido: el punto del inicio y del final.
 - Aspecto "espacio" (pedido de la autora: antes se veía biológico/celular): profundidad sin 3D (casi todo es polvo lejano diminuto, azulado y más lento; pocos agentes cercanos cálidos), corrientes más grandes (`FLOW_SCALE` 2.2 → 1.6), deriva global, filamentos Physarum, color por comportamiento (violeta en agentes rápidos, magenta en concentraciones, dorado solo en el clímax, blanco cálido en el frente del pulso) y resplandor contenido por nivel.
-- Verificado: build; gpu-check con 5.000, 20.000 y nivel 4 (200.000 agentes, 1,7 ms por paso de simulación) sin errores ni NaN, con pulsos, atracción, huella y resplandor; prueba en navegador (niveles, pulso, cantidad fija, FINAL completo hasta un punto, sin errores, 120 fps).
+- Verificado: build; gpu-check con 5.000, 20.000 y nivel 4 (200.000 agentes, 1,8 ms por paso de simulación) sin errores ni NaN, con pulsos, atracción, cuerpos, sistema, huella y resplandor; prueba en navegador (niveles, pulso, cuerpos, cursor oculto, cantidad fija, FINAL completo hasta un punto, sin errores, 120 fps).
 - NO verificado: sensación visual y de movimiento en la pantalla de la autora, fuerza percibida de la ATRACCIÓN y de la rueda, cantidad de color.
 - Pendiente: calibrar con el panel; bordes (las corrientes no empalman donde el espacio se envuelve: 5–7 % de agentes en los bordes vs 4 % esperado); guardián de rendimiento (§10); revisar el brillo del punto final.
 - Decisión de flocking: NO usa vecinos individuales. Los agentes depositan masa y velocidad en una rejilla (bilineal) y cada agente percibe esos campos a su alrededor: alineación con el momento medio, cohesión subiendo el gradiente de densidad, separación como presión cuando la densidad local supera `CROWD_FACTOR` × la densidad media de la rejilla (relativo: el carácter del flocking no cambia con la cantidad de agentes). Se resta la contribución del propio agente. Los pesos de la tabla de niveles son FACTORES sobre los valores del panel (nivel 4 = 1).
 
 ## Registro de cambios
 
+- 2026-10-01: cuerpos celestes emergentes (teclas 4 cuerpo, 5 sistema, 6 disolver; 1–3 también dispersan), mayor diferencia visual entre estados de MEMORIA y niveles de REVELACIÓN, cursor siempre oculto en performance (Claude).
 - 2026-10-01: Hito B + parte del Hito C (Claude): Physarum y MEMORIA, ATRACCIÓN, PULSO, RUMBO global (rueda), niveles de REVELACIÓN, FINAL, color por comportamiento, profundidad, resplandor, HUD mínimo y panel ampliado; teclas 1–5 activas en ambos modos con transición suave. Verificado con gpu-check y en navegador.
 - 2026-09-30: repo creado desde la plantilla y desplegado en Pages
 - 2026-10-01: dirección visual definida (referentes y paleta con violeta y magenta desde el inicio)
@@ -1012,7 +1016,8 @@ Modos: PERFORMANCE (por defecto: la obra + HUD mínimo) y DESARROLLO (métricas 
 
 Teclas: clic = comenzar (y música) · mouse RUMBO local · rueda RUMBO global · mantener clic ATRACCIÓN ·
 ↑/↓ MEMORIA · espacio PULSO · R / Shift+R REVELACIÓN · E FINAL · F pantalla completa ·
-P pausa (música y simulación) · M modo · T panel · D fps · 1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
+4 CUERPO · 5 SISTEMA · 6 disolver cuerpos · P pausa (música y simulación) · M modo · T panel · D fps ·
+1..3 = 300 / 3.000 / 20.000 agentes (también dispersan los cuerpos).
 
 ---
 

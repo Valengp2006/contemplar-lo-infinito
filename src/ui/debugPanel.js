@@ -70,6 +70,17 @@ export function createDebugPanel({ sim, particles, trail, post, instrument, conf
       ['Tiempo en crecer (s)', cfg('ATTRACT_RISE_S'), 0.1, 5, 0.1, 'ATTRACT_RISE_S'],
       ['Tiempo en soltar (s)', cfg('ATTRACT_RELEASE_S'), 0.1, 6, 0.1, 'ATTRACT_RELEASE_S'],
     ]],
+    ['CUERPOS (4 cuerpo · 5 sistema · 6 disolver)', [
+      ['Fuerza', U.wBody, 0, 4, 0.05, 'W_BODY'],
+      ['Giro de la materia', U.bodySpin, 0, 2, 0.05, 'BODY_SPIN'],
+      ['Refuerzo de cohesión', U.bodyCoh, 0, 5, 0.1, 'BODY_COHESION'],
+      ['Radio de un cuerpo', cfg('BODY_RADIUS'), 0.05, 0.4, 0.005, 'BODY_RADIUS'],
+      ['Vida (s)', cfg('BODY_LIFE_S'), 5, 120, 1, 'BODY_LIFE_S'],
+      ['Tiempo en disolverse (s)', cfg('BODY_RELEASE_S'), 1, 20, 0.5, 'BODY_RELEASE_S'],
+      ['Sistema: separación', cfg('SYSTEM_RADIUS'), 0.02, 0.3, 0.005, 'SYSTEM_RADIUS'],
+      ['Sistema: radio de cada cuerpo', cfg('SYSTEM_BODY_RADIUS'), 0.04, 0.3, 0.005, 'SYSTEM_BODY_RADIUS'],
+      ['Sistema: velocidad de órbita', cfg('SYSTEM_ORBIT'), 0, 1.5, 0.01, 'SYSTEM_ORBIT'],
+    ]],
     ['PULSO (barra espaciadora)', [
       ['Impulso', U.pulseForce, 0, 10, 0.1, 'PULSE_FORCE'],
       ['Desvío lateral', U.pulseDeflect, 0, 2, 0.05, 'PULSE_DEFLECT'],
@@ -161,17 +172,23 @@ export function createDebugPanel({ sim, particles, trail, post, instrument, conf
   slider('Transición de nivel (s)', 1, 15, 0.5, () => config.LEVEL_EASE_S * 3,
     (v) => { config.LEVEL_EASE_S = v / 3; }, (v) => `${Number(v).toFixed(1)} s`);
 
-  section('Cantidad fija (teclas 1–5)');
-  row(Object.values(config.AGENT_PRESETS).map((n) =>
+  section('Cantidad fija (teclas 1–3)');
+  row(config.PANEL_COUNTS.map((n) =>
     button(n >= 1000 ? `${n / 1000}k` : String(n), () => instrument.setCount(n), { padding: '5px 0' })), 5);
 
   section('MEMORIA (↑ / ↓) y FINAL (E)');
   slider('Memoria', 0, 1, 0.005, () => instrument.state.memory,
     (v) => { instrument.state.memory = v; }, () => `${instrument.memorySeconds().toFixed(1)} s`);
+  const cx = () => sim.U.world.value.x / 2;
   row([
-    button('pulso', () => instrument.pulse(sim.U.world.value.x / 2, 0.5)),
+    button('pulso', () => instrument.pulse(cx(), 0.5)),
     button('final', () => instrument.startFinal()),
   ], 2);
+  row([
+    button('cuerpo', () => instrument.body(cx(), 0.5)),
+    button('sistema', () => instrument.system(cx(), 0.5)),
+    button('disolver', () => instrument.dissolve()),
+  ], 3);
 
   // ── Parámetros ─────────────────────────────────────────────
   const bound = [];
@@ -209,8 +226,9 @@ export function createDebugPanel({ sim, particles, trail, post, instrument, conf
     'espacio   PULSO',
     'R / ⇧R    REVELACIÓN',
     'E         FINAL',
+    '4 / 5 / 6 CUERPO / SISTEMA / disolver',
     'F pantalla completa · P pausa',
-    'M modo · T panel · D fps · 1–5 cantidad',
+    'M modo · T panel · D fps · 1–3 cantidad',
   ].join('\n')));
 
   document.body.appendChild(panel);

@@ -7,9 +7,9 @@
  *
  * Interpretación: mover el mouse = RUMBO local · rueda / dos dedos = RUMBO global ·
  *   mantener clic = ATRACCIÓN · ↑ / ↓ = MEMORIA · barra espaciadora = PULSO ·
- *   R / Shift+R = REVELACIÓN · E = FINAL.
+ *   R / Shift+R = REVELACIÓN · E = FINAL · 4 = CUERPO · 5 = SISTEMA · 6 = disolver cuerpos.
  * Sesión: clic = comenzar · F pantalla completa · P pausa (música y simulación).
- * Desarrollo: M modo · T panel · D fps · 1..5 cantidad de agentes (con transición suave).
+ * Desarrollo: M modo · T panel · D fps · 1..3 cantidad fija (con transición suave; dispersa cuerpos).
  */
 import * as THREE from 'three/webgpu';
 
@@ -91,14 +91,9 @@ async function main() {
     showCursor();
   }
 
-  // ── Cursor: en performance se oculta tras unos segundos quieto ──
-  let cursorTimer = 0;
+  // ── Cursor: en performance (ya iniciada la pieza) nunca se ve; en desarrollo siempre ──
   function showCursor() {
-    document.body.style.cursor = 'default';
-    clearTimeout(cursorTimer);
-    if (mode !== 'dev') {
-      cursorTimer = setTimeout(() => { document.body.style.cursor = 'none'; }, config.CURSOR_HIDE_MS);
-    }
+    document.body.style.cursor = mode !== 'dev' && started ? 'none' : 'default';
   }
 
   const overUI = (e) => e.target instanceof Element && e.target.closest('.dev-ui');
@@ -190,6 +185,7 @@ async function main() {
         `revelación     ${instrument.level.toFixed(2)} → ${instrument.levelTarget}${s.countOverride ? '  (cantidad fija)' : ''}`,
         `memoria        ${instrument.memorySeconds().toFixed(1)} s`,
         `atracción      ${(s.attractOn * 100).toFixed(0)} %   pulsos ${s.pulses.length}`,
+        `cuerpos        ${s.bodies.length}${s.systems.length ? `  (sistemas ${s.systems.length})` : ''}`,
         s.final ? `FINAL          ${Math.round((s.final.t / config.FINAL_S) * 100)} %` : s.ended ? 'FINAL          terminado (R reinicia)' : '',
       ].filter(Boolean),
     });
@@ -267,7 +263,15 @@ async function main() {
     } else if (k === 'r') {
       if (e.shiftKey) instrument.levelDown(); else instrument.levelUp();
     } else if (k === 'e') instrument.startFinal();
-    else if (config.AGENT_PRESETS[e.key]) instrument.setCount(config.AGENT_PRESETS[e.key]);
+    else if (k === '4' || k === '5') {
+      const x = mouse.inside ? mouse.x : aspect / 2;
+      const y = mouse.inside ? mouse.y : 0.5;
+      if (k === '4') instrument.body(x, y); else instrument.system(x, y);
+    } else if (k === '6') instrument.dissolve();
+    else if (config.AGENT_PRESETS[e.key]) {
+      instrument.setCount(config.AGENT_PRESETS[e.key]);
+      instrument.dissolve();
+    }
   });
 
   window.addEventListener('keyup', (e) => {
@@ -285,8 +289,8 @@ async function main() {
     startEl.style.pointerEvents = 'none';
     setTimeout(() => { startEl.style.display = 'none'; }, 2000);
     music.play(); // el clic es el gesto que el navegador exige para sonar
-    setMode(mode);
     started = true;
+    setMode(mode);
     last = performance.now();
     renderer.setAnimationLoop(frame);
   }, { once: true });

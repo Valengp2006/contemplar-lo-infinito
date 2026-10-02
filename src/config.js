@@ -9,7 +9,8 @@
 const config = {
   // ── Agentes ──────────────────────────────────────────────────
   MAX_AGENTS: 200_000,        // reserva en GPU (N_max)
-  AGENT_PRESETS: { 1: 300, 2: 3_000, 3: 20_000, 4: 80_000, 5: 200_000 },  // teclas 1–5 (desarrollo)
+  AGENT_PRESETS: { 1: 300, 2: 3_000, 3: 20_000 },   // teclas 1–3: cantidad fija (y dispersan los cuerpos)
+  PANEL_COUNTS: [300, 3_000, 20_000, 80_000, 200_000],  // botones de cantidad del panel
   COUNT_EASE_S: 1.5,          // la cantidad de agentes se acerca a su objetivo en este tiempo
   FADE_S: 2.0,                // cada agente aparece / desaparece con un fundido de este tiempo
 
@@ -63,6 +64,24 @@ const config = {
   W_ATTRACT: 1.2,
   ATTRACT_COHESION: 1.5,      // refuerzo de la cohesión local dentro del pozo
 
+  // ── CUERPOS CELESTES (teclas 4, 5 y 6) ───────────────────────
+  // Un cuerpo es un centro de gravedad invisible: los agentes lo perciben y lo construyen.
+  // 4 = un cuerpo en el cursor · 5 = un sistema de cuerpos que se orbitan · 6 = disolver todos.
+  BODY_MAX: 6,                // cuerpos simultáneos
+  BODY_RADIUS: 0.16,          // radio de influencia de un cuerpo
+  BODY_GROW_S: 4,             // tiempo en formarse
+  BODY_LIFE_S: 30,            // a partir de aquí se disuelve solo
+  BODY_RELEASE_S: 7,          // tiempo en disolverse (la materia vuelve al polvo)
+  W_BODY: 1.6,
+  BODY_SPIN: 0.6,             // giro de la materia alrededor del núcleo
+  BODY_COHESION: 2.0,         // refuerzo de la cohesión dentro del cuerpo
+  BODY_CORE: 0.35,            // tamaño del núcleo (fracción del radio): dentro, la materia deja de caer y gira
+  BODY_RELAX: 0.5,            // cuánto se relaja la presión de separación dentro del cuerpo
+  SYSTEM_BODIES: 3,           // cuerpos de un sistema
+  SYSTEM_RADIUS: 0.09,        // distancia de cada cuerpo al centro del sistema
+  SYSTEM_BODY_RADIUS: 0.11,
+  SYSTEM_ORBIT: 0.25,         // radianes por segundo
+
   // ── PULSO (barra espaciadora): una onda anular ───────────────
   PULSE_CROSS_S: 6,           // tiempo en cruzar la pantalla
   PULSE_WIDTH: 0.06,          // ancho del frente
@@ -86,6 +105,8 @@ const config = {
   MEMORY_MAX_S: 25,
   MEMORY_DEFAULT_S: 3,
   MEMORY_RATE: 0.35,          // velocidad de cambio con las flechas (fracción del rango por segundo)
+  // La huella se ve con más o menos fuerza según la MEMORIA: se mide respecto a la vida media
+  // por defecto, así una memoria larga acumula redes brillantes y una corta casi no deja rastro.
   TRAIL_VISIBILITY: 1.0,      // brillo del mapa de huellas
 
   // ── REVELACIÓN: niveles 0..4 (se interpola entre ellos) ──────
@@ -94,14 +115,15 @@ const config = {
   LEVELS: {
     agents:     [300, 3_000, 20_000, 80_000, 200_000],
     octaves:    [1, 2, 3, 4, 5],
+    scale:      [1.35, 1.15, 1, 0.82, 0.65],   // × FLOW_SCALE: estructuras cada vez más grandes
     separation: [0.83, 1, 1, 1, 1],
     alignment:  [0.2, 0.6, 1, 1, 1],
     cohesion:   [0.15, 0.55, 0.85, 1, 1],
     sensor:     [0, 0.1, 0.35, 0.7, 1],
-    deposit:    [0, 0.2, 0.5, 0.8, 1],
-    brightness: [0.5, 0.6, 0.7, 0.8, 1],
-    color:      [0, 0.1, 0.25, 0.5, 1],
-    bloom:      [0, 0, 0.2, 0.35, 0.6],
+    deposit:    [0.12, 0.25, 0.5, 0.8, 1],      // en 0 apenas: estelas tenues si se sube la MEMORIA
+    brightness: [0.45, 0.6, 0.75, 0.9, 1.15],
+    color:      [0, 0.15, 0.35, 0.65, 1],
+    bloom:      [0, 0.05, 0.2, 0.45, 0.85],
     speed:      [1, 1, 1, 1.15, 1.15],
   },
 
@@ -143,7 +165,6 @@ const config = {
 
   // ── Interfaz y música ────────────────────────────────────────
   START_MODE: 'performance',  // 'performance' (pantalla limpia) o 'dev'; ?modo=dev en la URL lo fuerza
-  CURSOR_HIDE_MS: 3000,       // en performance el cursor se oculta tras este tiempo quieto
   HUD_SHOW_S: 3,              // el nombre del control se ve este tiempo
   METRICS_GRAPH_SECONDS: 5,   // segundos visibles en la gráfica de tiempo por cuadro
   MUSIC_VOLUME: 1.0,
