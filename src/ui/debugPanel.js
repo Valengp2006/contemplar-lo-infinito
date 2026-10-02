@@ -1,8 +1,10 @@
 /**
  * Panel de controles del modo desarrollo (lado derecho). Solo existe en ese modo;
  * T lo oculta un momento para mirar la pantalla sin taparla.
- * Secciones: pieza (música), agentes, movimiento, flocking, flow field, mouse.
- * "copiar valores" deja en el portapapeles los números para pegarlos en config.js.
+ * Secciones: pieza (música), interpretación (niveles, cantidad, final), memoria, visual,
+ * movimiento, flocking, flow field, rumbo, atracción, pulso, physarum.
+ * Todo se ajusta en vivo; "copiar valores" deja en el portapapeles los números para
+ * pegarlos en config.js.
  */
 import { formatTime } from '../audio/music.js';
 
@@ -14,46 +16,80 @@ const C = {
   buttonLine: 'rgba(255,245,230,0.2)',
 };
 
-export function createDebugPanel({ sim, particles, config, music, setAgents }) {
+export function createDebugPanel({ sim, particles, trail, post, instrument, config, music }) {
   const U = sim.U;
   const P = particles.uniforms;
+  // Parámetros que viven en JS (config) y no en la GPU: se editan directamente
+  const cfg = (key) => ({ get value() { return config[key]; }, set value(v) { config[key] = v; } });
 
   const groups = [
+    ['Visual', [
+      ['Brillo', P.brightness, 0.1, 2, 0.05, 'BRIGHTNESS'],
+      ['Tamaño de punto (px)', P.pointPx, 1, 8, 0.1, 'POINT_PX'],
+      ['Color (× nivel)', P.colorGain, 0, 3, 0.05, 'COLOR_GAIN'],
+      ['Resplandor (× nivel)', post.uniforms.gain, 0, 3, 0.05, 'BLOOM_GAIN'],
+      ['Resplandor: radio', post.uniforms.radius, 0, 1, 0.01, 'BLOOM_RADIUS'],
+      ['Resplandor: umbral', post.uniforms.threshold, 0, 0.5, 0.005, 'BLOOM_THRESHOLD'],
+      ['Huella: visibilidad', trail.uniforms.visibility, 0, 3, 0.05, 'TRAIL_VISIBILITY'],
+      ['Polvo lejano: tamaño', P.depthSizeFar, 0.2, 1.5, 0.01, null],
+      ['Polvo lejano: brillo', P.depthBrightFar, 0.05, 1, 0.01, null],
+      ['Compensación de luz', P.lightExponent, 0, 1.2, 0.05, 'LIGHT_EXPONENT'],
+      ['Compensación de tamaño', P.sizeExponent, 0, 0.5, 0.01, 'SIZE_EXPONENT'],
+    ]],
     ['Movimiento', [
       ['Velocidad máxima', U.maxSpeed, 0.005, 0.12, 0.001, 'MAX_SPEED'],
       ['Fuerza máxima', U.maxForce, 0.005, 0.12, 0.001, 'MAX_FORCE'],
       ['Wander', U.wWander, 0, 1.5, 0.05, 'W_WANDER'],
     ]],
-    ['Flocking', [
+    ['Flocking (con nivel 4)', [
       ['Separación', U.wSep, 0, 3, 0.05, 'W_SEPARATION'],
       ['Alineación', U.wAli, 0, 3, 0.05, 'W_ALIGNMENT'],
       ['Cohesión', U.wCoh, 0, 3, 0.05, 'W_COHESION'],
-      ['Límite de apiñamiento', U.crowd, 5, 150, 1, 'CROWD_LIMIT'],
+      ['Apiñamiento (× densidad media)', U.crowdFactor, 1, 8, 0.1, 'CROWD_FACTOR'],
       ['Vecinos para actuar', U.presenceN, 0.5, 12, 0.1, 'PRESENCE_N'],
     ]],
     ['Flow field', [
       ['Peso del flow', U.wFlow, 0, 3, 0.05, 'W_FLOW'],
-      ['Escala del flow', U.flowScale, 0.5, 8, 0.1, 'FLOW_SCALE'],
+      ['Escala del flow', U.flowScale, 0.3, 8, 0.1, 'FLOW_SCALE'],
       ['Evolución del flow', U.flowSpeed, 0, 0.3, 0.005, 'FLOW_SPEED'],
       ['Intensidad del flow', U.flowGain, 0.05, 1.5, 0.01, 'FLOW_GAIN'],
     ]],
-    ['Mouse (RUMBO local)', [
-      ['Intensidad', U.mouseStrength, 0, 4, 0.05, 'MOUSE_STRENGTH'],
-      ['Giro', U.mouseSwirl, 0, 3, 0.05, 'MOUSE_SWIRL'],
-      ['Radio', U.mouseRadius, 0.03, 0.4, 0.005, 'MOUSE_RADIUS'],
-      ['Decaimiento (1/s)', U.mouseDecay, 0.2, 6, 0.1, 'MOUSE_DECAY'],
-      ['Peso en el flow', U.mouseWeight, 0, 4, 0.05, 'MOUSE_WEIGHT'],
+    ['RUMBO (mouse y rueda)', [
+      ['Mouse: intensidad', U.mouseStrength, 0, 4, 0.05, 'MOUSE_STRENGTH'],
+      ['Mouse: giro', U.mouseSwirl, 0, 3, 0.05, 'MOUSE_SWIRL'],
+      ['Mouse: radio', U.mouseRadius, 0.03, 0.4, 0.005, 'MOUSE_RADIUS'],
+      ['Mouse: decaimiento (1/s)', U.mouseDecay, 0.2, 6, 0.1, 'MOUSE_DECAY'],
+      ['Mouse: peso en el flow', U.mouseWeight, 0, 4, 0.05, 'MOUSE_WEIGHT'],
+      ['Rueda: deriva global', cfg('DRIFT'), 0, 1.5, 0.01, 'DRIFT'],
+      ['Rueda: sensibilidad', cfg('DRIFT_WHEEL'), 0, 0.02, 0.0005, 'DRIFT_WHEEL'],
     ]],
-    ['Partículas', [
-      ['Tamaño de punto (px)', P.pointPx, 1, 8, 0.1, 'POINT_PX'],
-      ['Brillo', P.brightness, 0.1, 2, 0.05, 'BRIGHTNESS'],
+    ['ATRACCIÓN (mantener clic)', [
+      ['Radio', U.attractRadius, 0.05, 0.5, 0.005, 'ATTRACT_RADIUS'],
+      ['Fuerza', U.wAttract, 0, 4, 0.05, 'W_ATTRACT'],
+      ['Refuerzo de cohesión', U.attractCoh, 0, 5, 0.1, 'ATTRACT_COHESION'],
+      ['Tiempo en crecer (s)', cfg('ATTRACT_RISE_S'), 0.1, 5, 0.1, 'ATTRACT_RISE_S'],
+      ['Tiempo en soltar (s)', cfg('ATTRACT_RELEASE_S'), 0.1, 6, 0.1, 'ATTRACT_RELEASE_S'],
+    ]],
+    ['PULSO (barra espaciadora)', [
+      ['Impulso', U.pulseForce, 0, 10, 0.1, 'PULSE_FORCE'],
+      ['Desvío lateral', U.pulseDeflect, 0, 2, 0.05, 'PULSE_DEFLECT'],
+      ['Ancho del frente', U.pulseWidth, 0.01, 0.2, 0.005, 'PULSE_WIDTH'],
+      ['Tiempo en cruzar (s)', cfg('PULSE_CROSS_S'), 2, 15, 0.5, 'PULSE_CROSS_S'],
+      ['Aceleración extra', U.pulseSpeedup, 0, 3, 0.05, 'PULSE_SPEEDUP'],
+    ]],
+    ['Physarum (huella)', [
+      ['Peso de sensores (× nivel)', U.wSensor, 0, 3, 0.05, 'W_SENSOR'],
+      ['Ángulo de sensores (rad)', U.sensorAngle, 0.1, 1.5, 0.02, 'SENSOR_ANGLE'],
+      ['Distancia de sensores', U.sensorDist, 0.005, 0.1, 0.001, 'SENSOR_DIST'],
+      ['Depósito (× nivel)', cfg('DEPOSIT_RATE'), 0, 4, 0.05, 'DEPOSIT_RATE'],
+      ['Difusión (1/s)', cfg('TRAIL_DIFFUSE'), 0, 15, 0.1, 'TRAIL_DIFFUSE'],
     ]],
   ];
 
   const panel = document.createElement('div');
   panel.className = 'dev-ui';
   Object.assign(panel.style, {
-    position: 'fixed', top: '10px', right: '10px', width: '270px', maxHeight: 'calc(100vh - 20px)',
+    position: 'fixed', top: '10px', right: '10px', width: '280px', maxHeight: 'calc(100vh - 20px)',
     overflow: 'auto', background: 'rgba(8,10,18,0.88)', color: C.text,
     font: '11px/1.3 ui-monospace, Menlo, monospace', padding: '10px 12px', borderRadius: '6px',
     zIndex: '9000', display: 'none', border: `1px solid ${C.line}`,
@@ -73,23 +109,33 @@ export function createDebugPanel({ sim, particles, config, music, setAgents }) {
     b.addEventListener('click', onClick);
     return b;
   };
+  const row = (children, cols) => {
+    const r = el('div', { display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '4px', margin: '6px 0' });
+    children.forEach((c) => r.appendChild(c));
+    panel.appendChild(r);
+  };
   const section = (label) => {
     panel.appendChild(el('div', {
       marginTop: '12px', paddingTop: '8px', borderTop: `1px solid ${C.line}`,
       color: C.dim, letterSpacing: '0.08em', textTransform: 'uppercase',
     }, label));
   };
+  const refreshers = [];
   const slider = (label, min, max, step, read, write, format = (v) => Number(v).toFixed(3)) => {
-    const row = el('label', { display: 'block', margin: '6px 0' });
+    const r = el('label', { display: 'block', margin: '6px 0' });
     const text = el('div', {}, label);
     const val = el('span', { float: 'right' });
     text.appendChild(val);
     const input = el('input', { width: '100%' });
     input.type = 'range';
     input.min = min; input.max = max; input.step = step;
-    const sync = () => { input.value = read(); val.textContent = format(read()); };
+    let dragging = false;
+    input.addEventListener('pointerdown', () => { dragging = true; });
+    input.addEventListener('pointerup', () => { dragging = false; });
+    const sync = () => { if (!dragging) input.value = read(); val.textContent = format(read()); };
     input.addEventListener('input', () => { write(parseFloat(input.value)); sync(); });
-    row.appendChild(text); row.appendChild(input); panel.appendChild(row);
+    r.appendChild(text); r.appendChild(input); panel.appendChild(r);
+    refreshers.push(sync);
     sync();
     return { input, sync };
   };
@@ -98,54 +144,54 @@ export function createDebugPanel({ sim, particles, config, music, setAgents }) {
 
   // ── Pieza (música) ─────────────────────────────────────────
   section('Pieza');
-  const musicRow = el('div', { display: 'flex', gap: '6px', alignItems: 'center', margin: '6px 0' });
-  const playBtn = button('▶ música', () => { music.toggle(); refreshMusic(); }, { flex: '1' });
-  const restartBtn = button('⟲ inicio', () => { music.seek(0); refreshMusic(); }, { flex: '1' });
-  musicRow.appendChild(playBtn); musicRow.appendChild(restartBtn);
-  panel.appendChild(musicRow);
-  let seeking = false;
-  const seek = slider('Posición', 0, 1, 0.001,
+  const playBtn = button('▶ música', () => { music.toggle(); }, {});
+  row([playBtn, button('⟲ inicio', () => { music.seek(0); })], 2);
+  slider('Posición', 0, 1, 0.001,
     () => (music.duration ? music.time / music.duration : 0),
     (v) => music.seek(v * music.duration),
     () => `${formatTime(music.time)} / ${formatTime(music.duration)}`);
-  seek.input.addEventListener('pointerdown', () => { seeking = true; });
-  seek.input.addEventListener('pointerup', () => { seeking = false; });
   slider('Volumen', 0, 1, 0.01, () => music.audio.volume, (v) => music.setVolume(v),
     (v) => `${Math.round(v * 100)} %`);
 
-  function refreshMusic() {
-    if (!music.available) { playBtn.textContent = 'sin música'; playBtn.disabled = true; return; }
-    playBtn.textContent = music.playing ? '❚❚ música' : '▶ música';
-    if (!seeking) seek.sync();
-  }
-  setInterval(() => { if (panel.style.display !== 'none') refreshMusic(); }, 250);
+  // ── Interpretación ─────────────────────────────────────────
+  section('REVELACIÓN (R / Shift+R)');
+  row([0, 1, 2, 3, 4].map((lv) => button(`nivel ${lv}`, () => instrument.goToLevel(lv), { padding: '5px 0' })), 5);
+  const levelInfo = el('div', { color: C.dim, margin: '2px 0 6px' });
+  panel.appendChild(levelInfo);
+  slider('Transición de nivel (s)', 1, 15, 0.5, () => config.LEVEL_EASE_S * 3,
+    (v) => { config.LEVEL_EASE_S = v / 3; }, (v) => `${Number(v).toFixed(1)} s`);
 
-  // ── Agentes ────────────────────────────────────────────────
-  section('Agentes (teclas 1–5, cambio inmediato)');
-  const presetRow = el('div', { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', margin: '6px 0' });
-  for (const n of Object.values(config.AGENT_PRESETS)) {
-    const label = n >= 1000 ? `${n / 1000}k` : String(n);
-    presetRow.appendChild(button(label, () => setAgents(n), { padding: '5px 0' }));
-  }
-  panel.appendChild(presetRow);
-  // La percepción cambia el tamaño de la rejilla, por eso usa su propio setter
-  slider('Radio de percepción', 0.02, 0.15, 0.002, () => U.percep.value, (v) => sim.setPerception(v));
+  section('Cantidad fija (teclas 1–5)');
+  row(Object.values(config.AGENT_PRESETS).map((n) =>
+    button(n >= 1000 ? `${n / 1000}k` : String(n), () => instrument.setCount(n), { padding: '5px 0' })), 5);
 
-  // ── Parámetros de la simulación ────────────────────────────
+  section('MEMORIA (↑ / ↓) y FINAL (E)');
+  slider('Memoria', 0, 1, 0.005, () => instrument.state.memory,
+    (v) => { instrument.state.memory = v; }, () => `${instrument.memorySeconds().toFixed(1)} s`);
+  row([
+    button('pulso', () => instrument.pulse(sim.U.world.value.x / 2, 0.5)),
+    button('final', () => instrument.startFinal()),
+  ], 2);
+
+  // ── Parámetros ─────────────────────────────────────────────
   const bound = [];
   for (const [title, items] of groups) {
     section(title);
     for (const [label, node, min, max, step, key] of items) {
       slider(label, min, max, step, () => node.value, (v) => { node.value = v; });
-      bound.push({ key, node });
+      if (key) bound.push({ key, node });
     }
   }
+  section('Percepción');
+  slider('Radio de percepción', 0.02, 0.15, 0.002, () => U.percep.value, (v) => sim.setPerception(v));
 
   // ── Copiar valores ─────────────────────────────────────────
   const copy = button('copiar valores', async () => {
     const out = { ...config };
     for (const b of bound) out[b.key] = Number(Number(b.node.value).toFixed(4));
     out.PERCEPTION_RADIUS = Number(U.percep.value.toFixed(4));
+    out.DEPTH_SIZE = [Number(P.depthSizeFar.value.toFixed(3)), config.DEPTH_SIZE[1]];
+    out.DEPTH_BRIGHT = [Number(P.depthBrightFar.value.toFixed(3)), config.DEPTH_BRIGHT[1]];
     const text = JSON.stringify(out, null, 2);
     try { await navigator.clipboard.writeText(text); copy.textContent = 'copiado ✓'; }
     catch (_) { console.log(text); copy.textContent = 'ver consola'; }
@@ -156,22 +202,32 @@ export function createDebugPanel({ sim, particles, config, music, setAgents }) {
   // ── Teclas ─────────────────────────────────────────────────
   section('Teclas');
   panel.appendChild(el('div', { color: C.dim, whiteSpace: 'pre', lineHeight: '1.5' }, [
-    'M  modo desarrollo / performance',
-    'F  pantalla completa',
-    'P  pausa (música y simulación)',
-    'D  fps discreto',
-    'T  ocultar este panel',
-    '1–5  cantidad de agentes (solo aquí)',
+    'mouse     RUMBO local',
+    'rueda     RUMBO global',
+    'clic      ATRACCIÓN (mantener)',
+    '↑ / ↓     MEMORIA',
+    'espacio   PULSO',
+    'R / ⇧R    REVELACIÓN',
+    'E         FINAL',
+    'F pantalla completa · P pausa',
+    'M modo · T panel · D fps · 1–5 cantidad',
   ].join('\n')));
 
   document.body.appendChild(panel);
 
+  // Refresco periódico de valores que cambian solos (música, nivel, memoria)
+  setInterval(() => {
+    if (panel.style.display === 'none') return;
+    playBtn.textContent = !music.available ? 'sin música' : music.playing ? '❚❚ música' : '▶ música';
+    const s = instrument.state;
+    levelInfo.textContent = `nivel ${instrument.level.toFixed(2)} → ${instrument.levelTarget}`
+      + `${s.countOverride ? ` · cantidad fija ${s.countOverride.toLocaleString('es')}` : ''}`;
+    refreshers.forEach((f) => f());
+  }, 250);
+
   return {
     get visible() { return panel.style.display !== 'none'; },
-    setVisible(v) {
-      panel.style.display = v ? 'block' : 'none';
-      if (v) refreshMusic();
-    },
+    setVisible(v) { panel.style.display = v ? 'block' : 'none'; },
     toggle() { this.setVisible(!this.visible); },
   };
 }

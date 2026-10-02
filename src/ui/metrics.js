@@ -82,6 +82,7 @@ export function createMetrics(config) {
         `lienzo         ${info.canvasW}×${info.canvasH} px (×${info.dpr})`,
         `tiempo sim.    ${formatTime(info.simTime)}${info.paused ? '  EN PAUSA' : ''}`,
         `música         ${music}`,
+        ...(info.lines?.length ? ['', ...info.lines] : []),
       ].join('\n');
       drawGraph();
     },

@@ -36,20 +36,27 @@
 
 ## Estado del proyecto
 
-- Fase actual: Hito A (núcleo) reescrito desde cero por Claude; pendiente de probar en la Mac de la autora.
-- Arquitectura: WebGPU con Three.js 0.185.1 (`three/webgpu` + `three/tsl`), simulación 100 % en GPU con compute.
-- Interfaz en dos modos (tecla M; `?modo=dev` en la URL arranca en desarrollo): PERFORMANCE (por defecto) = pantalla limpia, cursor oculto a los 3 s, sin teclas de desarrollo; DESARROLLO = métricas (fps, ms por cuadro, gráfica, agentes, lienzo, tiempos) + panel de controles por secciones + control de la música + lista de teclas.
-- Música: `assets/Hans Zimmer - Interstellar Imperial Orchestra.mp3`, importada desde `src/audio/music.js` (Vite la incluye en el build). Arranca con el clic de inicio; P pausa música y simulación; se pausa sola si la pestaña deja de estar visible y se reanuda al volver (salvo pausa manual). Solo se reproduce, nunca se analiza.
-- Funciona (verificado en una GPU por software, sin errores de validación, sin NaN, estructuras emergentes): agentes con steering de Reynolds limitado, flow field tipo curl con evolución temporal, flocking por campos de densidad y momento, mapa de perturbación del mouse que decae, render con sprites suaves, aviso de errores en pantalla, panel de ajuste (T), pantalla completa (F), pausa (P), fps (D), cantidad de agentes (1 a 5).
-- NO verificado: fps reales, aspecto final en pantalla real, sensación de movimiento.
-- Pendiente: calibrar con el panel, Hito B (Physarum, MEMORIA, ATRACCIÓN, PULSO, niveles de REVELACIÓN) y Hito C (color, bloom, HUD, audio, FINAL).
-- Decisión de flocking: NO usa vecinos individuales. Los agentes depositan masa y velocidad en una rejilla (bilineal) y cada agente percibe esos campos a su alrededor: alineación con el momento medio, cohesión subiendo el gradiente de densidad, separación como presión cuando la densidad local supera `CROWD_LIMIT`. Se resta la contribución del propio agente. Produce agrupaciones suaves; las agrupaciones nunca se parecen a "bolas" de vecinos exactos.
+- Fase actual: Hito B construido y una primera parte del Hito C (color, resplandor, HUD, FINAL). Pendiente de calibrar en la Mac de la autora.
+- Arquitectura: WebGPU con Three.js 0.185.1 (`three/webgpu` + `three/tsl`), simulación 100 % en GPU con compute. Máximo 7 storage buffers por shader (límite 8).
+- Interfaz en dos modos (tecla M; `?modo=dev` en la URL arranca en desarrollo): PERFORMANCE (por defecto) = la obra + HUD mínimo; DESARROLLO = métricas (fps, ms por cuadro, gráfica, agentes, nivel, memoria, atracción, pulsos) + panel con todos los controles por secciones (pieza, revelación, cantidad fija, memoria y final, visual, movimiento, flocking, flow, rumbo, atracción, pulso, physarum) + "copiar valores".
+- Música: `assets/Hans Zimmer - Interstellar Imperial Orchestra.mp3`, importada desde `src/audio/music.js`. Arranca con el clic de inicio; P pausa música y simulación; se pausa sola si la pestaña deja de estar visible. Solo se reproduce, nunca se analiza.
+- Controles de interpretación (todos modifican el ENTORNO, ninguno mueve partículas): RUMBO local (mouse, mapa que se relaja en ~2 s) · RUMBO global (rueda / dos dedos: gira una deriva lenta de todo el campo) · ATRACCIÓN (mantener clic: pozo que crece en ~1,2 s y se libera en ~2 s; seek limitado + refuerzo de cohesión) · MEMORIA (↑/↓: vida media de la huella 0,4–25 s, logarítmica) · PULSO (espacio: hasta 4 ondas anulares que cruzan en ~6 s; impulso radial + desvío; la cohesión baja 1,5 s y se recupera en 4 s) · REVELACIÓN (R / Shift+R: niveles 0–4 con transición de ~15 s) · FINAL (E: ~40 s hasta un único punto; luego R reinicia).
+- Teclas de desarrollo en ambos modos: T panel, D fps, 1–5 cantidad fija (con transición suave; R/Shift+R/E la liberan).
+- Physarum: mapa de huellas (alto 720, ancho según la pantalla), depósito por agente con atómicos enteros, difusión 3×3 y decaimiento por vida media; tres sensores por agente giran su steering hacia el camino más marcado. Se dibuja aditivo bajo las partículas (azul profundo → blanco cálido en las intersecciones; violeta con memoria alta). La huella se mide relativa a su media, así se ve igual con cualquier cantidad.
+- Aparición escalonada: los agentes aparecen y desaparecen con un fundido de 2 s; su "masa" en los campos es ese fundido. El agente 0 es siempre el punto más cercano y cálido: el punto del inicio y del final.
+- Aspecto "espacio" (pedido de la autora: antes se veía biológico/celular): profundidad sin 3D (casi todo es polvo lejano diminuto, azulado y más lento; pocos agentes cercanos cálidos), corrientes más grandes (`FLOW_SCALE` 2.2 → 1.6), deriva global, filamentos Physarum, color por comportamiento (violeta en agentes rápidos, magenta en concentraciones, dorado solo en el clímax, blanco cálido en el frente del pulso) y resplandor contenido por nivel.
+- Verificado: build; gpu-check con 5.000, 20.000 y nivel 4 (200.000 agentes, 1,7 ms por paso de simulación) sin errores ni NaN, con pulsos, atracción, huella y resplandor; prueba en navegador (niveles, pulso, cantidad fija, FINAL completo hasta un punto, sin errores, 120 fps).
+- NO verificado: sensación visual y de movimiento en la pantalla de la autora, fuerza percibida de la ATRACCIÓN y de la rueda, cantidad de color.
+- Pendiente: calibrar con el panel; bordes (las corrientes no empalman donde el espacio se envuelve: 5–7 % de agentes en los bordes vs 4 % esperado); guardián de rendimiento (§10); revisar el brillo del punto final.
+- Decisión de flocking: NO usa vecinos individuales. Los agentes depositan masa y velocidad en una rejilla (bilineal) y cada agente percibe esos campos a su alrededor: alineación con el momento medio, cohesión subiendo el gradiente de densidad, separación como presión cuando la densidad local supera `CROWD_FACTOR` × la densidad media de la rejilla (relativo: el carácter del flocking no cambia con la cantidad de agentes). Se resta la contribución del propio agente. Los pesos de la tabla de niveles son FACTORES sobre los valores del panel (nivel 4 = 1).
 
 ## Registro de cambios
 
+- 2026-10-01: Hito B + parte del Hito C (Claude): Physarum y MEMORIA, ATRACCIÓN, PULSO, RUMBO global (rueda), niveles de REVELACIÓN, FINAL, color por comportamiento, profundidad, resplandor, HUD mínimo y panel ampliado; teclas 1–5 activas en ambos modos con transición suave. Verificado con gpu-check y en navegador.
 - 2026-09-30: repo creado desde la plantilla y desplegado en Pages
 - 2026-10-01: dirección visual definida (referentes y paleta con violeta y magenta desde el inicio)
 - 2026-10-01: reinicio del proyecto; se descarta el prototipo anterior
+- 2026-10-01: calibración por saturación (Claude): apiñamiento relativo a la densidad media, compensación de luz y tamaño según la cantidad de agentes, cohesión 0.6 → 0.3; el arranque espera a que la ventana tenga tamaño (evita el error de GPU "depthBuffer" de tamaño 0).
 - 2026-10-01: interfaz de desarrollo y de performance (tecla M) y música de fondo (Claude). Verificado: build, gpu-check (5.000 y 20.000) y prueba en navegador (ambos modos, pausa, música, 200.000 agentes sin errores).
 - 2026-10-01: Hito A reescrito (Claude). El intento anterior lanzaba errores de validación de GPU; la causa no se confirmó, pero se detectaron dos sospechosos en su código (atómicos sobre buffers no marcados como atómicos y más de 8 buffers por shader). La reescritura usa máximo 5 buffers por shader y atómicos con `.toAtomic()`, y se probó con un banco de pruebas que ejecuta los shaders reales en una GPU por software.
 
@@ -976,30 +983,36 @@ La complejidad debe construirse delante del espectador.
 
 ```text
 src/
-├── main.js                  ← arranque: WebGPURenderer, bucle, mouse, teclas
-├── config.js                ← TODOS los parámetros (unidades: alto = 1)
+├── main.js                  ← arranque: WebGPURenderer, bucle, mouse, rueda, teclas, modos
+├── config.js                ← TODOS los parámetros (unidades: alto = 1) y la tabla de niveles
 ├── sim/
-│   ├── Simulation.js        ← compute en GPU: rejilla, mouse, agentes
+│   ├── Simulation.js        ← compute en GPU: rejilla, mouse, agentes, huella Physarum
+│   ├── Instrument.js        ← controles → entorno: niveles, memoria, atracción, pulso, rumbo, final
 │   └── initialState.js      ← distribución inicial orgánica (JS)
 ├── render/
-│   └── Particles.js         ← sprites instanciados leyendo el buffer de la GPU
+│   ├── Particles.js         ← sprites instanciados: profundidad, fundido y color por comportamiento
+│   ├── Trail.js             ← mapa de huellas en pantalla completa (aditivo, bajo las partículas)
+│   └── Post.js              ← resplandor (bloom) contenido según el nivel
 ├── audio/
 │   └── music.js             ← música de fondo con <audio> (sin análisis)
 └── ui/
-    ├── debugPanel.js        ← modo desarrollo: controles por secciones, música, teclas
-    ├── metrics.js           ← modo desarrollo: fps, ms por cuadro, gráfica, agentes
+    ├── hud.js               ← HUD de la presentación: nombre del control, barra de memoria, 5 puntos
+    ├── debugPanel.js        ← modo desarrollo: todos los controles por secciones
+    ├── metrics.js           ← modo desarrollo: fps, ms por cuadro, gráfica, estado del instrumento
     └── errorOverlay.js      ← muestra el primer error de la GPU en pantalla
 ```
 
-Pipeline por frame (5 kernels): limpiar rejilla → depositar agentes (atómicos enteros
-en punto fijo) → normalizar campos → actualizar mapa del mouse → actualizar agentes.
+Pipeline por frame (7 kernels): limpiar rejilla → depositar agentes (atómicos enteros
+en punto fijo) → normalizar campos → actualizar mapa del mouse → actualizar agentes (y depositar
+huella) → difundir y desvanecer la huella → copiar la huella nueva.
 
-Límites: máximo 5 storage buffers por shader (el límite por defecto de WebGPU es 8).
+Límites: máximo 7 storage buffers por shader (el límite por defecto de WebGPU es 8).
 
-Modos: PERFORMANCE (por defecto, pantalla limpia) y DESARROLLO (métricas + controles).
+Modos: PERFORMANCE (por defecto: la obra + HUD mínimo) y DESARROLLO (métricas + controles).
 
-Teclas: clic = comenzar (y música) · M modo · F pantalla completa · P pausa (música y simulación) ·
-D fps discreto · solo en desarrollo: T oculta el panel, 1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
+Teclas: clic = comenzar (y música) · mouse RUMBO local · rueda RUMBO global · mantener clic ATRACCIÓN ·
+↑/↓ MEMORIA · espacio PULSO · R / Shift+R REVELACIÓN · E FINAL · F pantalla completa ·
+P pausa (música y simulación) · M modo · T panel · D fps · 1..5 = 300 / 3.000 / 20.000 / 80.000 / 200.000 agentes.
 
 ---
 
