@@ -55,6 +55,7 @@
 
 ## Registro de cambios
 
+- 2026-10-01: apareció la grabación de uno de los 4 primeros ensayos (se creía no grabada), anterior al ajuste de los cuerpos; está en Google Drive (https://drive.google.com/file/d/1hiOvklknYdQwIyDW1IOgFxDub6h1l9Py/view?usp=drive_web) y se enlaza desde el README y la bitácora (Claude).
 - 2026-10-01: en el ensayo grabado funcionó todo; a la autora le gustaron los cambios de los cuerpos y la tecla 6, y el resultado quedó como esperaba. Registrado en la bitácora (Claude).
 - 2026-10-01: video de un ensayo completo grabado a las 21:11, después del ajuste de los cuerpos (`docs/evidencias/ensayo-2026-10-01.mp4`, comprimido de 1,4 GB a 86 MB, 1080p y 30 fps, sin editar: entre 5:00 y 5:05 se ve por accidente el menú de emojis de macOS). Enlazado en el README y la bitácora (Claude).
 - 2026-10-01: la autora fija su autoevaluación en 100/100 (25 por criterio); el README la sustenta solo con evidencias reales y mantiene las limitaciones conocidas (bordes, sin grabación) (Claude).

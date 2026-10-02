@@ -137,8 +137,10 @@ cómputo por cuadro. El código está en `src/` (estructura en `AGENTS.md`, secc
 > música están en la tabla "Registro de ensayos" de la [bitácora](docs/bitacora.md).
 >
 > **Ensayos:** el 1 de octubre se hicieron 4 ensayos en vivo de la pieza completa, con todos los
-> controles, y funcionaron bien. Después del ajuste de los cuerpos se grabó un ensayo completo:
-> [video](docs/evidencias/ensayo-2026-10-01.mp4).
+> controles, y funcionaron bien. Hay dos videos:
+> - [uno de esos cuatro ensayos (Google Drive)](https://drive.google.com/file/d/1hiOvklknYdQwIyDW1IOgFxDub6h1l9Py/view?usp=drive_web), antes del ajuste de los cuerpos;
+> - [un ensayo completo posterior](docs/evidencias/ensayo-2026-10-01.mp4), con los cuerpos ya
+>   ajustados.
 
 | Criterio | Puntaje | Resumen |
 |---|---|---|
@@ -271,7 +273,8 @@ comportamiento.*
   (efecto del pulso) y [`10-sistema-de-cuerpos.jpg`](docs/evidencias/10-sistema-de-cuerpos.jpg).
 - **Ensayos:** 4 ensayos en vivo de la pieza completa (1 de octubre), con todos los controles.
   El sistema respondió bien y la calibración de color funcionó. Los pequeños defectos de los
-  bordes se integraron en la interpretación.
+  bordes se integraron en la interpretación. Uno de ellos está grabado:
+  [video en Google Drive](https://drive.google.com/file/d/1hiOvklknYdQwIyDW1IOgFxDub6h1l9Py/view?usp=drive_web).
 - **Respuesta a lo observado al tocar:** tras los ensayos, la autora pidió que los cuerpos
   se formaran más rápido y fueran más grandes, y que la dispersión fuera más impactante. El
   instrumento se ajustó en consecuencia

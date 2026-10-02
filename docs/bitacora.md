@@ -165,7 +165,8 @@ verificó. Las imágenes están en [`docs/evidencias/`](evidencias/). Los códig
 
 - La autora hace **4 ensayos en vivo** de la pieza completa con todos los controles. Funcionan
   bien y la calibración de color funciona. Los pequeños defectos de los bordes se integran en
-  la interpretación. No hay grabación.
+  la interpretación. Uno de ellos quedó grabado ([video en Google Drive](https://drive.google.com/file/d/1hiOvklknYdQwIyDW1IOgFxDub6h1l9Py/view?usp=drive_web)); al principio
+  la autora creyó que esa grabación no se había iniciado.
 - **Pedido de la autora:** que el cuerpo (tecla 4) se forme un poco más rápido y sea un poco
   más grande, y que la dispersión (tecla 6) sea más impactante.
 - **Causa de la lentitud:** la materia viaja como mucho a la velocidad normal de los agentes.
@@ -197,6 +198,6 @@ verificó. Las imágenes están en [`docs/evidencias/`](evidencias/). Los códig
 
 | Fecha | Qué se ensayó | Qué funcionó | Qué cambiar | Evidencia (video, captura, nota) |
 |---|---|---|---|---|
-| 2026-10-01 | 4 ensayos de tocar en vivo: la pieza completa con la música, usando todos los controles | El sistema funcionó bien en los cuatro ensayos y la calibración de color funciona bien. Los pequeños defectos de los bordes se logran integrar en la interpretación. | El resultado de la tecla 4 (cuerpos) funciona, pero no es exactamente el esperado. Corregir los bordes. | Testimonio de la autora. No hay grabación: se intentó grabar uno de los ensayos, pero la grabación no se inició. |
+| 2026-10-01 | 4 ensayos de tocar en vivo: la pieza completa con la música, usando todos los controles | El sistema funcionó bien en los cuatro ensayos y la calibración de color funciona bien. Los pequeños defectos de los bordes se logran integrar en la interpretación. | El resultado de la tecla 4 (cuerpos) funciona, pero no es exactamente el esperado. Corregir los bordes. | Testimonio de la autora y [video de uno de los cuatro ensayos (Google Drive)](https://drive.google.com/file/d/1hiOvklknYdQwIyDW1IOgFxDub6h1l9Py/view?usp=drive_web), grabado antes del ajuste de los cuerpos. |
 | 2026-10-01, 21:11 | Ensayo grabado de la pieza completa con la música (6:39), hecho después del ajuste de los cuerpos (commit de las 21:09) | Funcionó todo. A la autora le gustaron los cambios (cuerpos más rápidos y grandes, estallido con la tecla 6) y el resultado quedó como esperaba. | Entre 5:00 y 5:05 se abrió por accidente el menú de emojis de macOS: un error de la grabación, no de la obra. Desactivar ese atajo antes de presentar. | [Video del ensayo](evidencias/ensayo-2026-10-01.mp4) (comprimido a 1080p y 30 fps; 86 MB), [fotograma del clímax](evidencias/13-ensayo-climax.jpg) |
 | | | | | |
