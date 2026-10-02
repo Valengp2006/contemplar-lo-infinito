@@ -19,7 +19,11 @@ que no se puede comprender del todo**.
   [`docs/prototipo-1-especificacion.md`](docs/prototipo-1-especificacion.md),
   [`docs/funcionalidad-completa.md`](docs/funcionalidad-completa.md)
 
-![Nivel 4 de REVELACIÓN: filamentos de materia con resplandor](docs/evidencias/05-nivel4-nebulosa.jpg)
+[![Clímax del ensayo grabado: filamentos violetas y un sistema de cuerpos](docs/evidencias/13-ensayo-climax.jpg)](docs/evidencias/ensayo-2026-10-01.mp4)
+
+**▶ [Video de un ensayo completo](docs/evidencias/ensayo-2026-10-01.mp4)** (6:39, con la
+música; 1 de octubre de 2026). Entre 5:00 y 5:05 aparece por accidente el menú de emojis de
+macOS: es un error de la grabación, no de la obra.
 
 ---
 
@@ -133,7 +137,8 @@ cómputo por cuadro. El código está en `src/` (estructura en `AGENTS.md`, secc
 > música están en la tabla "Registro de ensayos" de la [bitácora](docs/bitacora.md).
 >
 > **Ensayos:** el 1 de octubre se hicieron 4 ensayos en vivo de la pieza completa, con todos los
-> controles. Funcionaron bien. No hay grabación: el intento de grabar uno de ellos no se inició.
+> controles, y funcionaron bien. Después del ajuste de los cuerpos se grabó un ensayo completo:
+> [video](docs/evidencias/ensayo-2026-10-01.mp4).
 
 | Criterio | Puntaje | Resumen |
 |---|---|---|
@@ -273,8 +278,10 @@ comportamiento.*
   ([evidencia](docs/evidencias/12-cuerpo-formacion-y-estallido.png)).
 - **Por qué 25:** el score y los controles permitieron conducir la pieza completa en vivo en
   4 ensayos, y el instrumento evolucionó a partir de lo que la intérprete observó al tocar.
-- **Nota:** no hay grabación de los ensayos; el intento de grabar uno no se inició. La
-  interpretación se demuestra en vivo en la sesión 4.
+- **Ensayo grabado:** la pieza completa con la música, después del ajuste de los cuerpos
+  ([video, 6:39](docs/evidencias/ensayo-2026-10-01.mp4);
+  [fotograma del clímax](docs/evidencias/13-ensayo-climax.jpg)). Entre 5:00 y 5:05 aparece por
+  accidente el menú de emojis de macOS; es un error de la grabación, no del instrumento.
 
 ---
 

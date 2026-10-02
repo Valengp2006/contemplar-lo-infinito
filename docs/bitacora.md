@@ -190,11 +190,14 @@ verificó. Las imágenes están en [`docs/evidencias/`](evidencias/). Los códig
   (`funcionalidad-completa.md` §10).
 - **Punto final:** revisar su brillo y tamaño.
 - **Teclas 4 y 6:** ya se ajustaron según lo pedido. Falta confirmarlas en un ensayo.
-- **Grabación:** grabar al menos un ensayo completo antes de la sesión 4 como evidencia.
+- **Antes de presentar:** desactivar el atajo del menú de emojis (*Ajustes del Sistema →
+  Teclado → "Presionar la tecla 🌐 para" → No hacer nada*). En el ensayo grabado se abrió por
+  accidente.
 
 ## Registro de ensayos (lo completa la autora)
 
 | Fecha | Qué se ensayó | Qué funcionó | Qué cambiar | Evidencia (video, captura, nota) |
 |---|---|---|---|---|
 | 2026-10-01 | 4 ensayos de tocar en vivo: la pieza completa con la música, usando todos los controles | El sistema funcionó bien en los cuatro ensayos y la calibración de color funciona bien. Los pequeños defectos de los bordes se logran integrar en la interpretación. | El resultado de la tecla 4 (cuerpos) funciona, pero no es exactamente el esperado. Corregir los bordes. | Testimonio de la autora. No hay grabación: se intentó grabar uno de los ensayos, pero la grabación no se inició. |
+| 2026-10-01, 21:11 | Ensayo grabado de la pieza completa con la música (6:39), hecho después del ajuste de los cuerpos (commit de las 21:09) | Ver video | Entre 5:00 y 5:05 se abrió por accidente el menú de emojis de macOS: un error de la grabación, no de la obra. Desactivar ese atajo antes de presentar. | [Video del ensayo](evidencias/ensayo-2026-10-01.mp4) (comprimido a 1080p y 30 fps; 86 MB), [fotograma del clímax](evidencias/13-ensayo-climax.jpg) |
 | | | | | |
