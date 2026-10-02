@@ -126,6 +126,8 @@ export function createSimulation(renderer, config, aspect) {
     bodyCoh: uniform(config.BODY_COHESION),
     bodyCore: uniform(config.BODY_CORE),
     bodyRelax: uniform(config.BODY_RELAX),
+    bodySpeedup: uniform(config.BODY_SPEEDUP),
+    bodyBurst: uniform(config.BODY_BURST),
 
     pulse0: uniform(new THREE.Vector4(0, 0, 0, 0)),   // x, y, radio del frente, amplitud
     pulse1: uniform(new THREE.Vector4(0, 0, 0, 0)),
@@ -351,22 +353,30 @@ export function createSimulation(renderer, config, aspect) {
       const attrFall = float(1).sub(smoothstep(0, U.attractRadius, rAttr)).mul(U.attractOn);
 
       // ---- CUERPOS: cada agente percibe los centros de gravedad cercanos ----
-      // Dentro del radio se curva hacia el centro con un giro (la materia rota y se condensa);
-      // con intensidad negativa se aleja (el cuerpo se disuelve y su materia vuelve al polvo).
+      // Con intensidad positiva cae girando hacia el centro (la gravedad acelera la materia que
+      // atrae: puede superar un poco su velocidad normal); dentro del núcleo se asienta.
+      // Con intensidad negativa el cuerpo estalla: un empujón hacia afuera (como un pulso) y la
+      // materia vuelve al polvo.
       const bodySteer = vec2(0, 0).toVar();
       const bodyIn = float(0).toVar();
+      const burstVec = vec2(0, 0).toVar();
+      const burstFront = float(0).toVar();
       for (const B of U.bodies) {
         const d = wrapDelta(B.xy.sub(pos));
         const r = length(d);
-        const fall = float(1).sub(smoothstep(0, B.w, r)).mul(B.z);
+        const reach = float(1).sub(smoothstep(0, B.w, r));
+        const pull = reach.mul(max(B.z, 0));
+        const push = reach.mul(max(B.z.negate(), 0));
         const radial = d.div(max(r, 1e-4));
         const tangent = vec2(radial.y.negate(), radial.x);
         // Fuera del núcleo cae girando; dentro, caída y giro se apagan y la materia se asienta
         const core = clamp(r.div(B.w.mul(U.bodyCore)), 0, 1);
         const inward = limitLen(radial.add(tangent.mul(U.bodySpin)).mul(core), float(1));
-        const desired = select(B.z.greaterThanEqual(0), inward, radial.negate()).mul(maxSpeed);
-        bodySteer.addAssign(limitLen(desired.sub(vel), maxForce).mul(fall.abs()));
-        bodyIn.assign(max(bodyIn, max(fall, 0)));
+        const boost = float(1).add(pull.mul(U.bodySpeedup));
+        bodySteer.addAssign(limitLen(inward.mul(maxSpeed).mul(boost).sub(vel), maxForce.mul(boost)).mul(pull));
+        bodyIn.assign(max(bodyIn, pull));
+        burstVec.addAssign(radial.negate().mul(push));
+        burstFront.assign(max(burstFront, push));
       }
 
       // ---- PULSO: el frente de cada onda empuja hacia afuera y desvía ----
@@ -383,7 +393,7 @@ export function createSimulation(renderer, config, aspect) {
         front.assign(max(front, f));
       }
       // Perturbación: salta con el frente y luego vuelve a 0
-      const calm = max(st.z.sub(U.dt.mul(U.calmRate)), front);
+      const calm = max(st.z.sub(U.dt.mul(U.calmRate)), max(front, burstFront));
       // Cohesión baja durante "calmHold" s y se recupera en "calmRecover" s
       const sinceHit = float(1).sub(calm).div(U.calmRate);
       const cohAfterPulse = clamp(sinceHit.sub(U.calmHold).div(U.calmRecover), 0, 1);
@@ -442,11 +452,11 @@ export function createSimulation(renderer, config, aspect) {
         sepSteer.add(aliSteer).add(cohSteer).add(flowSteer).add(wanderSteer).add(sensSteer).add(attrSteer)
           .add(bodySteer.mul(U.wBody)),
         maxForce.mul(U.forceCap),
-      ).add(pulseVec.mul(maxForce).mul(U.pulseForce));
+      ).add(pulseVec.mul(maxForce).mul(U.pulseForce)).add(burstVec.mul(maxForce).mul(U.bodyBurst));
 
       // ---- Integración ----
       vel.addAssign(acc.mul(U.dt));
-      vel.assign(limitLen(vel, maxSpeed.mul(float(1).add(calm.mul(U.pulseSpeedup)))));
+      vel.assign(limitLen(vel, maxSpeed.mul(float(1).add(calm.mul(U.pulseSpeedup)).add(bodyIn.mul(U.bodySpeedup)))));
       pos.addAssign(vel.mul(U.dt));
       pos.assign(vec2(wrapMod(pos.x, U.world.x), wrapMod(pos.y, float(1))));
 

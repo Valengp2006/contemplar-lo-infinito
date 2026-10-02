@@ -62,13 +62,19 @@ export function createInstrument(sim, config) {
   const memorySeconds = () => Math.exp(logMin + (logMax - logMin) * s.memory);
   const worldDiag = () => Math.hypot(U.world.value.x, 1);
 
-  // Intensidad de un cuerpo: crece, se mantiene y al disolverse empuja un momento hacia
-  // afuera (−0,4) para que la materia vuelva al polvo, y luego se apaga.
+  // Intensidad de un cuerpo: crece, se mantiene y al final se libera.
+  //   · natural (a los ~30 s): empuja suave hacia afuera (−0,4) y se apaga
+  //   · tecla 6: ESTALLA — pasa casi de inmediato a −1, se sostiene y se apaga
+  const releaseTime = (b) => (b.burst ? config.BODY_BURST_S : config.BODY_RELEASE_S);
   function bodyStrength(b) {
     const grow = smoothstep(0, config.BODY_GROW_S, b.age);
     if (b.age < b.life) return grow;
-    const t = clamp01((b.age - b.life) / config.BODY_RELEASE_S);
-    return t < 0.5 ? grow * (1 - 2.8 * t) : -0.4 * (1 - (t - 0.5) * 2);
+    const t = clamp01((b.age - b.life) / releaseTime(b));
+    if (b.burst) {
+      if (t < 0.08) return b.strengthAtRelease * (1 - t / 0.08) - t / 0.08;
+      return t < 0.4 ? -1 : -(1 - (t - 0.4) / 0.6);
+    }
+    return t < 0.5 ? b.strengthAtRelease * (1 - 2.8 * t) : -0.4 * (1 - (t - 0.5) * 2);
   }
 
   function addBody(b) {
@@ -167,7 +173,10 @@ export function createInstrument(sim, config) {
       const step = Math.min(dist, config.BODY_SPEED * dt);
       if (dist > 1e-6) { b.x += (dx / dist) * step; b.y += (dy / dist) * step; }
     }
-    s.bodies = s.bodies.filter((b) => b.age < b.life + config.BODY_RELEASE_S);
+    for (const b of s.bodies) if (b.age >= b.life && b.strengthAtRelease === undefined) {
+      b.strengthAtRelease = smoothstep(0, config.BODY_GROW_S, b.life);
+    }
+    s.bodies = s.bodies.filter((b) => b.age < b.life + releaseTime(b));
     if (!s.bodies.some((b) => b.inSystem)) s.system = null;
     U.bodies.forEach((u, k) => {
       const b = s.bodies[k];
@@ -305,7 +314,7 @@ export function createInstrument(sim, config) {
     dissolve() {
       let any = false;
       for (const b of s.bodies) {
-        if (b.age < b.life) { b.life = Math.max(b.age, config.BODY_GROW_S * 0.5); any = true; }
+        if (b.age < b.life) { b.life = b.age; b.burst = true; any = true; }
       }
       if (any) signal('DISOLUCIÓN');
     },

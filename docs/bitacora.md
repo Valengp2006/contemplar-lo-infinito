@@ -161,6 +161,25 @@ verificó. Las imágenes están en [`docs/evidencias/`](evidencias/). Los códig
   cuerpos viajan como máximo a 0,015 y la órbita es más lenta. El sistema se ve como tres
   núcleos que se orbitan ([`10`](evidencias/10-sistema-de-cuerpos.jpg)).
 
+### 7. Ensayos en vivo y ajuste de los cuerpos
+
+- La autora hace **4 ensayos en vivo** de la pieza completa con todos los controles. Funcionan
+  bien y la calibración de color funciona. Los pequeños defectos de los bordes se integran en
+  la interpretación. No hay grabación.
+- **Pedido de la autora:** que el cuerpo (tecla 4) se forme un poco más rápido y sea un poco
+  más grande, y que la dispersión (tecla 6) sea más impactante.
+- **Causa de la lentitud:** la materia viaja como mucho a la velocidad normal de los agentes.
+  **Cambio:** la gravedad del cuerpo acelera la materia que atrae (hasta +150 %), y el cuerpo
+  crece en 1,5 s en lugar de 4 s.
+- **Tamaño:** radio de influencia de 0,16 a 0,22 y núcleo más amplio.
+- **Dispersión:** la tecla 6 ahora estalla. Es un empujón fuerte hacia afuera, como un pulso,
+  que acelera la materia y la ilumina en blanco cálido; deja un vacío donde estaba el núcleo.
+  La disolución natural a los 30 s sigue siendo suave.
+- **Verificación:** se comparó una línea de tiempo antes y después
+  ([`12`](evidencias/12-cuerpo-formacion-y-estallido.png)). Antes no se veía nada a los 3 s;
+  ahora ya hay un núcleo formándose a los 3 s y uno grande a los 6 s. El estallido es
+  claramente visible.
+
 ---
 
 ## Pendientes
@@ -170,11 +189,12 @@ verificó. Las imágenes están en [`docs/evidencias/`](evidencias/). Los códig
 - **Guardián de rendimiento:** bajar la cantidad de agentes si los fps caen
   (`funcionalidad-completa.md` §10).
 - **Punto final:** revisar su brillo y tamaño.
-- **Ensayos con la música:** registrar cada ensayo en la tabla de abajo.
+- **Teclas 4 y 6:** ya se ajustaron según lo pedido. Falta confirmarlas en un ensayo.
+- **Grabación:** grabar al menos un ensayo completo antes de la sesión 4 como evidencia.
 
 ## Registro de ensayos (lo completa la autora)
 
 | Fecha | Qué se ensayó | Qué funcionó | Qué cambiar | Evidencia (video, captura, nota) |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-01 | 4 ensayos de tocar en vivo: la pieza completa con la música, usando todos los controles | El sistema funcionó bien en los cuatro ensayos y la calibración de color funciona bien. Los pequeños defectos de los bordes se logran integrar en la interpretación. | El resultado de la tecla 4 (cuerpos) funciona, pero no es exactamente el esperado. Corregir los bordes. | Testimonio de la autora. No hay grabación: se intentó grabar uno de los ensayos, pero la grabación no se inició. |
 | | | | | |

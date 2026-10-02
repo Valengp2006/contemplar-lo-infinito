@@ -69,18 +69,21 @@ const config = {
   // 4 = un cuerpo nuevo en el cursor · 5 = los cuerpos sueltos se reúnen en un sistema que se
   // orbita (permanece hasta disolverlo) · 6 = disolver todos. Los sueltos viven BODY_LIFE_S.
   BODY_MAX: 8,                // cuerpos simultáneos
-  BODY_RADIUS: 0.16,          // radio de influencia de un cuerpo
-  BODY_GROW_S: 4,             // tiempo en formarse
+  BODY_RADIUS: 0.22,          // radio de influencia de un cuerpo
+  BODY_GROW_S: 1.5,           // tiempo en formarse
   BODY_LIFE_S: 30,            // un cuerpo suelto se disuelve solo a partir de aquí
-  BODY_RELEASE_S: 7,          // tiempo en disolverse (la materia vuelve al polvo)
-  W_BODY: 1.6,
+  BODY_RELEASE_S: 7,          // disolución natural, suave (la materia vuelve al polvo)
+  BODY_BURST_S: 4,            // disolución con la tecla 6: estallido hacia afuera
+  BODY_BURST: 4.0,            // fuerza del estallido (× MAX_FORCE, como el pulso)
+  BODY_SPEEDUP: 1.5,          // la gravedad acelera la materia que atrae (hasta +150 % de velocidad máx.)
+  W_BODY: 2.0,
   BODY_SPIN: 0.6,             // giro de la materia alrededor del núcleo
   BODY_COHESION: 2.0,         // refuerzo de la cohesión dentro del cuerpo
-  BODY_CORE: 0.35,            // tamaño del núcleo (fracción del radio): dentro, la materia deja de caer y gira
+  BODY_CORE: 0.45,            // tamaño del núcleo (fracción del radio): dentro, la materia deja de caer y gira
   BODY_RELAX: 0.5,            // cuánto se relaja la presión de separación dentro del cuerpo
   SYSTEM_RADIUS: 0.09,        // distancia al centro (crece un poco con cada cuerpo del sistema)
   SYSTEM_GATHER_S: 8,         // tiempo en que los cuerpos llegan a su órbita
-  SYSTEM_BODY_RADIUS: 0.11,
+  SYSTEM_BODY_RADIUS: 0.14,
   SYSTEM_ORBIT: 0.08,         // radianes por segundo
   BODY_SPEED: 0.015,          // velocidad máxima de un cuerpo al moverse (menor que la de los agentes)
 

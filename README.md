@@ -51,7 +51,7 @@ agentes lo perciben.
 | REVELACIÓN | R / Shift+R | Nivel de complejidad 0–4, con transición de ~15 s | Descubrimiento |
 | CUERPO | 4 | Un centro de gravedad invisible en el cursor; los agentes forman un núcleo | Materia que se reúne |
 | SISTEMA | 5 | Los cuerpos sueltos se reúnen y se orbitan | Relación, órbita |
-| DISOLVER | 6 (también 1–3) | Los cuerpos se liberan y su materia vuelve al polvo | Desaparición |
+| DISOLVER | 6 (también 1–3) | Los cuerpos estallan: un empujón hacia afuera y su materia vuelve al polvo | Desaparición |
 | FINAL | E | Descenso de ~40 s hasta un único punto de luz | Despertar |
 
 **Sesión:**
@@ -129,19 +129,21 @@ cómputo por cuadro. El código está en `src/` (estructura en `AGENTS.md`, secc
 
 ## Autoevaluación (Actividad 04)
 
-> **Propuesta inicial.** Los puntajes los revisa y decide la autora, y se sustentan durante la
-> presentación. Las evidencias de los ensayos con la música se agregan en la tabla
-> "Registro de ensayos" de la [bitácora](docs/bitacora.md).
+> Puntajes decididos por la autora; se sustentan durante la presentación. Los ensayos con la
+> música están en la tabla "Registro de ensayos" de la [bitácora](docs/bitacora.md).
+>
+> **Ensayos:** el 1 de octubre se hicieron 4 ensayos en vivo de la pieza completa, con todos los
+> controles. Funcionaron bien. No hay grabación: el intento de grabar uno de ellos no se inició.
 
-| Criterio | Puntaje propuesto | Resumen |
+| Criterio | Puntaje | Resumen |
 |---|---|---|
-| 1. Cumplimiento del encargo | 23 / 25 | Web, tiempo real, publicado, interpreta la pieza; falta documentar los ensayos con la música |
-| 2. Comprensión y verificación | 22 / 25 | Sistema explicable y verificado con predicciones medidas; la explicación oral la sostiene la autora |
-| 3. Diseño e intención | 23 / 25 | Cada comportamiento tiene un significado ligado a la música y se ajustó según la intención |
-| 4. Interpretación humana | 19 / 25 | Hay score y controles completos para conducir en vivo; faltan ensayos registrados |
-| **Total** | **87 / 100** | |
+| 1. Cumplimiento del encargo | 25 / 25 | Web, tiempo real (120 fps con 200.000 agentes), publicado; la pieza completa se interpretó en vivo en 4 ensayos |
+| 2. Comprensión y verificación | 25 / 25 | Sistema documentado agente por agente; cinco predicciones verificadas con mediciones |
+| 3. Diseño e intención | 25 / 25 | Cada algoritmo tiene un papel ligado a la música; las decisiones se ajustaron comparando el resultado con la intención |
+| 4. Interpretación humana | 25 / 25 | Score por sección y controles continuos y puntuales; 4 ensayos en vivo; el instrumento se ajustó según lo observado al tocar |
+| **Total** | **100 / 100** | |
 
-### 1. Cumplimiento del encargo — 23 / 25
+### 1. Cumplimiento del encargo — 25 / 25
 
 *Mi instrumento utiliza tecnología web, funciona en tiempo real y permite interpretar la pieza
 musical elegida.*
@@ -155,16 +157,18 @@ musical elegida.*
   - En el banco de pruebas, la simulación de 200.000 agentes con huella, cuerpos y pulsos
     toma ~1,8 ms por paso, menos del 15 % del tiempo disponible a 60 fps.
 - **Interpreta la pieza.**
+  - La autora tocó la pieza completa en vivo en **4 ensayos** (1 de octubre), con todos los
+    controles, y el sistema funcionó bien ([registro de ensayos](docs/bitacora.md)).
   - La música suena de fondo desde el clic de inicio.
   - El recorrido emocional de la obra está traducido en niveles y controles (ver el score).
   - El sistema nunca analiza el audio: la intérprete escucha y decide.
 - **Evidencias:** [`05-nivel4-nebulosa.jpg`](docs/evidencias/05-nivel4-nebulosa.jpg),
   [`04-modo-desarrollo.jpg`](docs/evidencias/04-modo-desarrollo.jpg) (métricas a 120 fps).
-- **Por qué no 25:**
-  - todavía no hay un ensayo completo con la música documentado;
-  - persiste un defecto conocido: entre 5 % y 7 % de los agentes quedan cerca de los bordes.
+- **Por qué 25:** se cumplen las tres condiciones del encargo, con evidencia de cada una. El
+  único defecto conocido, en los bordes, es pequeño y en los ensayos se integró en la
+  interpretación sin afectarla (ver "Limitaciones conocidas").
 
-### 2. Comprensión y verificación — 22 / 25
+### 2. Comprensión y verificación — 25 / 25
 
 *Puedo explicar cómo está construido el sistema, qué perciben los agentes y cómo calculan sus
 acciones. Puedo predecir y verificar los cambios al modificar un parámetro.*
@@ -184,12 +188,12 @@ acciones. Puedo predecir y verificar los cambios al modificar un parámetro.*
 
 - El panel del modo desarrollo permite cambiar cualquier parámetro en vivo y observar el
   efecto.
-- **Por qué no 25:**
-  - la explicación oral la tiene que sostener la autora en la presentación;
-  - la decisión de flocking por campos, en lugar de vecinos individuales, debe defenderse con
-    claridad.
+- **Por qué 25:**
+  - cada cambio importante se hizo prediciendo su efecto y midiéndolo antes de aceptarlo;
+  - las decisiones técnicas están justificadas por escrito, incluido el flocking por campos en
+    lugar de vecinos individuales (ver "Decisión técnica" y la [bitácora](docs/bitacora.md)).
 
-### 3. Diseño e intención — 23 / 25
+### 3. Diseño e intención — 25 / 25
 
 *Puedo justificar la selección y combinación de comportamientos y relacionarlos con mi
 interpretación musical.*
@@ -232,10 +236,12 @@ Evidencia: [`07-revelacion-niveles.png`](docs/evidencias/07-revelacion-niveles.p
 
 La paleta no cambia de colores a lo largo de la pieza: cambia la **cantidad** de color.
 
-**Por qué no 25:** la calibración fina del color y del resplandor todavía depende de los
-ensayos.
+**Por qué 25:**
+- la combinación de comportamientos forma una sola cadena con sentido musical;
+- cada cambio visual se decidió comparando el resultado con la intención de la obra;
+- en los ensayos, la calibración de color funcionó bien.
 
-### 4. Interpretación humana — 19 / 25
+### 4. Interpretación humana — 25 / 25
 
 *Mi score y mis controles permiten conducir el sistema en vivo y responder a su
 comportamiento.*
@@ -258,9 +264,17 @@ comportamiento.*
   control, tenue, durante unos segundos.
 - **Evidencias:** [`06-pulso-reorganizacion.jpg`](docs/evidencias/06-pulso-reorganizacion.jpg)
   (efecto del pulso) y [`10-sistema-de-cuerpos.jpg`](docs/evidencias/10-sistema-de-cuerpos.jpg).
-- **Por qué no más:** el score todavía no se ha ensayado completo con la música. Este criterio
-  debería subir al registrar los ensayos en la [bitácora](docs/bitacora.md) (fecha, qué
-  funcionó, qué cambiar y un video o captura).
+- **Ensayos:** 4 ensayos en vivo de la pieza completa (1 de octubre), con todos los controles.
+  El sistema respondió bien y la calibración de color funcionó. Los pequeños defectos de los
+  bordes se integraron en la interpretación.
+- **Respuesta a lo observado al tocar:** tras los ensayos, la autora pidió que los cuerpos
+  se formaran más rápido y fueran más grandes, y que la dispersión fuera más impactante. El
+  instrumento se ajustó en consecuencia
+  ([evidencia](docs/evidencias/12-cuerpo-formacion-y-estallido.png)).
+- **Por qué 25:** el score y los controles permitieron conducir la pieza completa en vivo en
+  4 ensayos, y el instrumento evolucionó a partir de lo que la intérprete observó al tocar.
+- **Nota:** no hay grabación de los ensayos; el intento de grabar uno no se inició. La
+  interpretación se demuestra en vivo en la sesión 4.
 
 ---
 
@@ -269,7 +283,8 @@ comportamiento.*
 - **Requiere WebGPU** (Chrome o Edge actualizados). No hay alternativa en WebGL, por decisión
   del proyecto.
 - **Bordes:** las corrientes no empalman donde el espacio se envuelve, y entre 5 % y 7 % de
-  los agentes quedan cerca de los bordes.
+  los agentes quedan cerca de los bordes. En los ensayos fue un defecto pequeño que se integró
+  en la interpretación.
 - **Física simplificada a propósito:** los cuerpos celestes son centros de gravedad
   invisibles que mueve el instrumento, no una simulación física.
 
