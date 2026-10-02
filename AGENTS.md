@@ -55,6 +55,7 @@
 
 ## Registro de cambios
 
+- 2026-10-01: README con autoevaluación (Actividad 04) y evidencias, bitácora del proceso de diseño e implementación (`docs/bitacora.md`) e imágenes de evidencia (`docs/evidencias/`) (Claude). Los puntajes son una propuesta: los decide y sustenta la autora.
 - 2026-10-01: el sistema se arma con los cuerpos creados: 4 crea un cuerpo con cada pulsación, 5 los reúne en un sistema que se orbita y permanece; los sueltos se disuelven a los ~30 s (Claude).
 - 2026-10-01: cuerpos celestes emergentes (teclas 4 cuerpo, 5 sistema, 6 disolver; 1–3 también dispersan), mayor diferencia visual entre estados de MEMORIA y niveles de REVELACIÓN, cursor siempre oculto en performance (Claude).
 - 2026-10-01: Hito B + parte del Hito C (Claude): Physarum y MEMORIA, ATRACCIÓN, PULSO, RUMBO global (rueda), niveles de REVELACIÓN, FINAL, color por comportamiento, profundidad, resplandor, HUD mínimo y panel ampliado; teclas 1–5 activas en ambos modos con transición suave. Verificado con gpu-check y en navegador.
